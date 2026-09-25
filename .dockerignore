@@ -1,0 +1,9 @@
+.env
+venv/
+.venv/
+data/vector_db/
+__pycache__/
+.git/
+.github/
+.claude/
+tests/

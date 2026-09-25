@@ -1,0 +1,32 @@
+{
+  "in_scope": [
+    {"question": "Quelle taille de morceau choisir quand on découpe un document ?", "expected": "500 à 1000"},
+    {"question": "Quelle est la différence entre recherche sparse et dense ?", "expected": "compare les mots exacts"},
+    {"question": "Pourquoi utiliser Chroma pour commencer ?", "expected": "Pinecone ou Weaviate"},
+    {"question": "Qu'arrive-t-il si les bons passages ne sont pas retrouvés ?", "expected": "qualité du retrieval"},
+    {"question": "Que fait Spring avec les exceptions JDBC dans un @Repository ?", "expected": "DataAccessException"},
+    {"question": "Qu'est-ce qui distingue @Component de @Service ?", "expected": "@Component est générique"},
+    {"question": "Comment un objet reçoit-il ses dépendances ?", "expected": "conteneur IoC"},
+    {"question": "Comment activer un profil Spring ?", "expected": "spring.profiles.active"},
+    {"question": "Quelle est la différence entre une image et un conteneur ?", "expected": "instance en cours d'exécution"},
+    {"question": "Pourquoi copier requirements.txt avant le code dans un Dockerfile ?", "expected": "AVANT de copier le code"},
+    {"question": "Comment garder les données d'une base quand on supprime le conteneur ?", "expected": "monte un dossier"},
+    {"question": "Que signifie l'option -d ?", "expected": "mode détaché"},
+    {"question": "Comment lister tous les clients même ceux sans commande ?", "expected": "LEFT JOIN garde"},
+    {"question": "Peut-on utiliser COUNT dans un WHERE ?", "expected": "HAVING COUNT(*) > 5"},
+    {"question": "Faut-il indexer toutes les colonnes d'une table ?", "expected": "pas toutes les colonnes"},
+    {"question": "Que fait @Transactional si une exception est levée ?", "expected": "rollback automatique"},
+    {"question": "Que veut dire ACID ?", "expected": "Atomicité"},
+    {"question": "Est-ce que je peux faire un rebase sur une branche partagée ?", "expected": "ne jamais faire de rebase"},
+    {"question": "Comment annuler mon dernier commit en gardant mes modifications ?", "expected": "reset --soft"},
+    {"question": "J'ai commité ma clé API par erreur, que faire ?", "expected": "révoquer la clé"},
+    {"question": "Quel préfixe mettre dans un message de commit qui corrige un bug ?", "expected": "fix pour une correction"},
+    {"question": "Quelle commande démarre tous les services en arrière-plan ?", "expected": "docker compose up -d"}
+  ],
+  "out_of_scope": [
+    "Qui a gagné la coupe du monde 2018 ?",
+    "Quelle est la capitale de l'Australie ?",
+    "Comment fonctionne un pod Kubernetes ?",
+    "Quelle est la complexité du tri rapide ?"
+  ]
+}

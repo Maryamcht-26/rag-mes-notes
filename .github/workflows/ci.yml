@@ -1,0 +1,19 @@
+# Lance les tests à chaque push et pull request. Les tests n'utilisent ni
+# clé API ni réseau (LLM et retriever simulés), donc aucun secret n'est requis.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest tests/ -v

@@ -1,0 +1,20 @@
+# Secrets
+.env
+
+# Base vectorielle générée localement (à régénérer avec build_index)
+data/vector_db/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# Fichiers locaux de l'assistant Claude Code
+.claude/
+.pytest_cache/
