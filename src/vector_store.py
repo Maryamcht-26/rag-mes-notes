@@ -27,6 +27,10 @@ from src import config
 # pas le processus entre l'indexation et les questions.
 _CHROMA_SETTINGS = Settings(anonymized_telemetry=False, is_persistent=True)
 
+# Nombre de chunks insérés par appel à Chroma (limite interne ~166, voir
+# build_vector_store).
+INDEX_BATCH_SIZE = 100
+
 
 def get_embeddings() -> FastEmbedEmbeddings:
     """
@@ -45,26 +49,32 @@ def build_vector_store(chunks: list[Document]) -> Chroma:
     C'est l'étape d'INDEXATION : à lancer une fois, puis à chaque fois
     que les documents source changent.
 
-    Chroma.from_documents fait deux choses pour chaque chunk :
+    add_documents fait deux choses pour chaque chunk :
     1. calcule son embedding via le modèle fourni
     2. le stocke sur disque avec son texte et ses métadonnées
 
-    Correctif V1.2 : Chroma.from_documents AJOUTE à une collection
-    existante, il ne la remplace pas. Sans la suppression ci-dessous,
-    chaque ré-indexation dupliquait tous les chunks (vérifié : 5 + 12 = 17
-    chunks en base après une 2e indexation), et le retrieval renvoyait
-    plusieurs fois le même passage.
+    Correctif V1.2 : Chroma AJOUTE à une collection existante, il ne la
+    remplace pas. Sans la suppression ci-dessous, chaque ré-indexation
+    dupliquait tous les chunks (vérifié : 5 + 12 = 17 chunks en base après
+    une 2e indexation), et le retrieval renvoyait plusieurs fois le même
+    passage.
+
+    Correctif V1.3 : Chroma refuse d'insérer plus de ~166 chunks en un seul
+    appel ("Batch size 432 exceeds maximum batch size 166", limite de
+    SQLite). Invisible avec 12 chunks, bloquant dès qu'on ajoute de vrais
+    documents : on insère donc par lots de INDEX_BATCH_SIZE.
     """
     if config.VECTOR_DB_DIR.exists():
         get_vector_store().delete_collection()
 
-    vector_store = Chroma.from_documents(
-        documents=chunks,
-        embedding=get_embeddings(),
+    vector_store = Chroma(
         collection_name=config.COLLECTION_NAME,
+        embedding_function=get_embeddings(),
         persist_directory=str(config.VECTOR_DB_DIR),
         client_settings=_CHROMA_SETTINGS,
     )
+    for start in range(0, len(chunks), INDEX_BATCH_SIZE):
+        vector_store.add_documents(chunks[start : start + INDEX_BATCH_SIZE])
     print(f"Base vectorielle créée avec {len(chunks)} chunks -> {config.VECTOR_DB_DIR}")
     return vector_store
 

@@ -75,7 +75,12 @@ def tokenize(text: str) -> list[str]:
     return re.findall(r"[@\w]+", text.lower())
 
 
-def build_retriever(vector_store, mode: str = config.RETRIEVAL_MODE, k: int = config.TOP_K):
+def build_retriever(
+    vector_store,
+    mode: str = config.RETRIEVAL_MODE,
+    k: int = config.TOP_K,
+    candidates: int = config.HYBRID_CANDIDATES,
+):
     """
     Construit le retriever selon le mode :
     - "dense"  : similarité d'embeddings seule (sens de la phrase)
@@ -83,15 +88,20 @@ def build_retriever(vector_store, mode: str = config.RETRIEVAL_MODE, k: int = co
                  avec la Reciprocal Rank Fusion : un chunk bien classé par
                  les deux recherches remonte en tête.
 
+    En hybride, chaque recherche renvoie `candidates` chunks AVANT la fusion
+    (et non k) : un passage classé 6e par le dense mais 1er par BM25 doit
+    pouvoir gagner la fusion. Avec seulement k candidats de chaque côté, il
+    était éliminé avant même d'être comparé.
+
     Retourne un Runnable : question (str) -> liste de k Documents.
     """
-    dense = vector_store.as_retriever(search_kwargs={"k": k})
     if mode == "dense":
-        return dense
+        return vector_store.as_retriever(search_kwargs={"k": k})
     if mode != "hybrid":
         raise ValueError(f"RETRIEVAL_MODE inconnu : {mode!r} (attendu: 'dense' ou 'hybrid')")
 
-    bm25 = BM25Retriever.from_documents(get_all_chunks(vector_store), preprocess_func=tokenize, k=k)
+    dense = vector_store.as_retriever(search_kwargs={"k": candidates})
+    bm25 = BM25Retriever.from_documents(get_all_chunks(vector_store), preprocess_func=tokenize, k=candidates)
     ensemble = EnsembleRetriever(retrievers=[dense, bm25], weights=list(config.HYBRID_WEIGHTS))
     # La fusion peut renvoyer jusqu'à 2*k chunks distincts : on garde les k meilleurs
     # pour que le prompt ait la même taille quel que soit le mode.

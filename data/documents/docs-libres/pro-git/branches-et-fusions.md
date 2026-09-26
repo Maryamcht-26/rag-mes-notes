@@ -1,0 +1,228 @@
+<!-- Source : Pro Git, Scott Chacon et Ben Straub, traduction française, https://git-scm.com/book/fr/v2
+     Licence : CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/ -->
+
+### Branches et fusions : les bases
+
+Prenons un exemple simple faisant intervenir des branches et des fusions (_merges_) que vous pourriez trouver dans le monde réel.
+Vous effectuez les tâches suivantes :
+
+. vous travaillez sur un site web ;
+. vous créez une branche pour un nouvel article en cours ;
+. vous commencez à travailler sur cette branche.
+
+À cette étape, vous recevez un appel pour vous dire qu'un problème critique a été découvert et qu'il faut le régler au plus tôt.
+Vous faites donc ce qui suit :
+
+. vous basculez sur la branche de production ;
+. vous créez une branche pour y ajouter le correctif ;
+. après l'avoir testé, vous fusionnez la branche du correctif et poussez le résultat en production ;
+. vous rebasculez sur la branche initiale et continuez votre travail.
+
+Commençons par supposer que vous travaillez sur votre projet et avez déjà quelques _commits_ sur la branche `master`.
+
+Vous avez décidé de travailler sur le problème numéroté #53 dans l'outil de gestion des tâches que votre entreprise utilise, quel qu'il soit.
+Pour créer une branche et y basculer tout de suite, vous pouvez lancer la commande `git checkout` avec l'option `-b` :
+
+$ git checkout -b iss53
+Switched to a new branch "iss53"
+
+Cette commande est un raccourci pour :
+
+$ git branch iss53
+$ git checkout iss53
+
+Vous travaillez sur votre site web et validez vos modifications.
+Ce faisant, la branche `iss53` avance parce que vous l'avez extraite (c'est-à-dire que votre pointeur `HEAD` pointe dessus) :
+
+$ vim index.html
+$ git commit -a -m "ajout d'un pied de page [problème 53]"
+
+À ce moment-là, vous recevez un appel qui vous apprend qu'il y a un problème sur le site web qu'il faut résoudre immédiatement.
+Avec Git, vous n'avez pas à déployer en même temps votre correctif et les modifications déjà validées pour `iss53` et vous n'avez pas non plus à vous fatiguer à annuler ces modifications avant de pouvoir appliquer votre correctif sur ce qu'il y a en production.
+Tout ce que vous avez à faire, c'est simplement de rebasculer sur la branche `master`.
+
+Cependant, avant de le faire, notez que si votre copie de travail ou votre zone d'index contiennent des modifications non validées qui sont en conflit avec la branche que vous extrayez, Git ne vous laissera pas changer de branche.
+Le mieux est d'avoir votre copie de travail propre au moment de changer de branche.
+Il y a des moyens de contourner ceci (précisément par le remisage et l'amendement de _commit_) dont nous parlerons plus loin, au chapitre .
+Pour l'instant, nous supposons que vous avez validé tous vos changements et que vous pouvez donc rebasculer vers votre branche `master` :
+
+$ git checkout master
+Switched to branch 'master'
+
+À cet instant, votre répertoire de copie de travail est exactement dans l'état dans lequel vous l'aviez laissé avant de commencer à travailler sur le problème #53 et vous pouvez vous consacrer à votre correctif.
+C'est un point important à garder en mémoire : quand vous changez de branche, Git réinitialise votre répertoire de travail pour qu'il soit le même que la dernière fois que vous avez effectué un _commit_ sur cette branche.
+Il ajoute, retire et modifie automatiquement les fichiers de manière à s'assurer que votre copie de travail soit identique à ce qu'elle était lors de votre dernier _commit_ sur cette branche.
+
+Vous avez ensuite un correctif à faire.
+Pour ce faire, créons une branche `hotfix` sur laquelle travailler jusqu'à résolution du problème :
+
+$ git checkout -b hotfix
+Switched to a new branch 'hotfix'
+$ vim index.html
+$ git commit -a -m "correction de l'adresse email incorrecte"
+ 1 file changed, 2 insertions(+)
+
+Vous pouvez lancer vos tests, vous assurer que la correction est efficace et la fusionner dans la branche `master` pour la déployer en production.
+Vous réalisez ceci au moyen de la commande `git merge` :
+
+$ git checkout master
+$ git merge hotfix
+Updating f42c576..3a0874c
+Fast-forward
+ index.html | 2 ++
+ 1 file changed, 2 insertions(+)
+
+Vous noterez la mention `fast-forward` lors de cette fusion (_merge_).
+Comme le _commit_ `C4` pointé par la branche `hotfix` que vous avez fusionnée était directement devant le _commit_ `C2` sur lequel vous vous trouvez, Git a simplement déplacé le pointeur (vers l'avant).
+Autrement dit, lorsque l'on cherche à fusionner un _commit_ qui peut être atteint en parcourant l'historique depuis le _commit_ d'origine, Git se contente d'avancer le pointeur car il n'y a pas de travaux divergents à fusionner — ceci s'appelle un `fast-forward` (avance rapide).
+
+Votre modification est maintenant dans l'instantané (_snapshot_) du _commit_ pointé par la branche `master` et vous pouvez déployer votre correctif.
+
+Après le déploiement de votre correctif super-important, vous voilà prêt à retourner travailler sur le sujet qui vous occupait avant l'interruption.
+Cependant, vous allez avant cela effacer la branche `hotfix` dont vous n'avez plus besoin puisque la branche `master` pointe au même endroit.
+Vous pouvez l'effacer avec l'option `-d` de la commande `git branch` :
+
+$ git branch -d hotfix
+Deleted branch hotfix (3a0874c).
+
+Maintenant, vous pouvez retourner travailler sur la branche qui contient vos travaux en cours pour le problème #53 :
+
+$ git checkout iss53
+Switched to branch "iss53"
+$ vim index.html
+$ git commit -a -m 'Nouveau pied de page terminé [issue 53]'
+1 file changed, 1 insertion(+)
+
+Il est utile de noter que le travail réalisé dans la branche `hotfix` n'est pas contenu dans les fichiers de la branche `iss53`.
+Si vous avez besoin de les y rapatrier, vous pouvez fusionner la branche `master` dans la branche `iss53` en lançant la commande `git merge master`, ou vous pouvez retarder l'intégration de ces modifications jusqu'à ce que vous décidiez plus tard de rapatrier la branche `iss53` dans `master`.
+
+Supposons que vous ayez décidé que le travail sur le problème #53 était terminé et prêt à être fusionné dans la branche `master`.
+Pour ce faire, vous allez fusionner votre branche `iss53` de la même manière que vous l'avez fait plus tôt pour la branche `hotfix`.
+Tout ce que vous avez à faire est d'extraire la branche dans laquelle vous souhaitez fusionner et lancer la commande `git merge`:
+
+$ git checkout master
+Switched to branch 'master'
+$ git merge iss53
+Merge made by the 'recursive' strategy.
+README |    1 +
+1 file changed, 1 insertion(+)
+
+Le comportement semble légèrement différent de celui observé pour la fusion précédente de la branche `hotfix`.
+Dans ce cas, à un certain moment, l'historique de développement a divergé.
+Comme le _commit_ sur la branche sur laquelle vous vous trouvez n'est plus un ancêtre direct de la branche que vous cherchez à fusionner, Git doit effectuer quelques actions.
+Dans ce cas, Git réalise une simple fusion à trois sources (_three-way merge_), en utilisant les deux instantanés pointés par les sommets des branches ainsi que leur plus proche ancêtre commun.
+
+Au lieu d'avancer simplement le pointeur de branche, Git crée un nouvel instantané qui résulte de la fusion à trois sources et crée automatiquement un nouveau _commit_ qui pointe dessus.
+On appelle ceci un _commit_ de fusion (_merge commit_) qui est spécial en cela qu'il a plus d'un parent.
+
+À présent que votre travail a été fusionné, vous n'avez plus besoin de la branche `iss53`.
+Vous pouvez fermer le ticket dans votre outil de suivi des tâches et supprimer la branche :
+
+$ git branch -d iss53
+
+Quelques fois, le processus ci-dessus ne se déroule pas aussi bien.
+Si vous avez modifié différemment la même partie du même fichier dans les deux branches que vous souhaitez fusionner, Git ne sera pas capable de réaliser proprement la fusion.
+Si votre résolution du problème #53 a modifié la même section de fichier que le `hotfix`, vous obtiendrez un conflit qui ressemblera à ceci :
+
+$ git merge iss53
+Auto-merging index.html
+CONFLICT (content): Merge conflict in index.html
+Automatic merge failed; fix conflicts and then commit the result.
+
+Git n'a pas automatiquement créé le _commit_ de fusion.
+Il a arrêté le processus le temps que vous résolviez le conflit.
+Si vous voulez vérifier, à tout moment après l'apparition du conflit, quels fichiers n'ont pas été fusionnés, vous pouvez lancer la commande `git status` :
+
+$ git status
+On branch master
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+
+    both modified:      index.html
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+Tout ce qui comporte des conflits et n'a pas été résolu est listé comme `unmerged`.
+Git ajoute des marques de résolution de conflit standards dans les fichiers qui comportent des conflits, pour que vous puissiez les ouvrir et résoudre les conflits manuellement.
+Votre fichier contient des sections qui ressemblent à ceci :
+
+<<<<<<< HEAD:index.html
+<div id="footer">contact : email.support@github.com</div>
+<div id="footer">
+ please contact us at support@github.com
+</div>
+>>>>>>> iss53:index.html
+
+Cela signifie que la version dans `HEAD` (votre branche `master`, parce que c'est celle que vous aviez extraite quand vous avez lancé votre commande de fusion) est la partie supérieure de ce bloc (tout ce qui se trouve au-dessus de la ligne `=======`), tandis que la version de votre branche `iss53` se trouve en dessous.
+Pour résoudre le conflit, vous devez choisir une partie ou l'autre ou bien fusionner leurs contenus vous-même.
+Par exemple, vous pourriez choisir de résoudre ce conflit en remplaçant tout le bloc par ceci :
+
+<div id="footer">
+please contact us at email.support@github.com
+</div>
+
+Cette résolution comporte des éléments de chaque section et les lignes ` `=======` et `>>>>>` ont été complètement effacées.
+Après avoir résolu chacune de ces sections dans chaque fichier comportant un conflit, lancez `git add` sur chaque fichier pour le marquer comme résolu.
+Placer le fichier dans l'index marque le conflit comme résolu pour Git.
+
+Si vous souhaitez utiliser un outil graphique pour résoudre ces conflits, vous pouvez lancer `git mergetool` qui démarre l'outil graphique de fusion approprié et vous permet de naviguer dans les conflits :
+
+$ git mergetool
+
+This message is displayed because 'merge.tool' is not configured.
+See 'git mergetool --tool-help' or 'git help config' for more details.
+'git mergetool' will now attempt to use one of the following tools:
+opendiff kdiff3 tkdiff xxdiff meld tortoisemerge gvimdiff diffuse diffmerge ecmerge p4merge araxis bc3 codecompare vimdiff emerge
+Merging:
+index.html
+
+Normal merge conflict for 'index.html':
+  {local}: modified file
+  {remote}: modified file
+Hit return to start merge resolution tool (opendiff):
+
+Si vous souhaitez utiliser un outil de fusion autre que celui par défaut (Git a choisi `opendiff` dans ce cas car la commande a été lancée depuis un Mac), vous pouvez voir tous les outils supportés après l'indication « _of the following tools:_ ».
+Entrez simplement le nom de l'outil que vous préféreriez utiliser.
+
+Si vous avez besoin d'outils plus avancés pour résoudre des conflits complexes, vous trouverez davantage d'informations au chapitre .
+
+Après avoir quitté l'outil de fusion, Git vous demande si la fusion a été réussie.
+Si vous répondez par la positive à l'outil, il ajoute le fichier dans l'index pour le marquer comme résolu.
+Vous pouvez lancer à nouveau la commande `git status` pour vérifier que tous les conflits ont été résolus :
+
+$ git status
+On branch master
+All conflicts fixed but you are still merging.
+  (use "git commit" to conclude merge)
+
+Changes to be committed:
+
+    modified:   index.html
+
+Si cela vous convient et que vous avez vérifié que tout ce qui comportait des conflits a été ajouté à l'index, vous pouvez entrer la commande `git commit` pour finaliser le _commit_ de fusion.
+Le message de validation par défaut ressemble à ceci :
+
+Merge branch 'iss53'
+
+Conflicts:
+    index.html
+#
+# It looks like you may be committing a merge.
+# If this is not correct, please remove the file
+#	.git/MERGE_HEAD
+# and try again.
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+# On branch master
+# All conflicts fixed but you are still merging.
+#
+# Changes to be committed:
+#	modified:   index.html
+#
+
+Vous pouvez modifier ce message pour inclure les détails sur la manière dont le conflit a été résolu si vous pensez que cela peut être utile lors d'une revue ultérieure.
+Indiquez pourquoi vous avez fait ces choix, si ce n'est pas clair.

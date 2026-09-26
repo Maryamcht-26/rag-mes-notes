@@ -18,6 +18,27 @@ from src.vector_store import build_vector_store
 
 st.set_page_config(page_title="RAG sur mes notes", page_icon="🔎")
 
+EXAMPLES = [
+    "Quelle est la différence entre INNER JOIN et LEFT JOIN ?",
+    "Comment revenir à la version précédente d'un déploiement Kubernetes ?",
+    "Quelle est la différence entre merge et rebase ?",
+]
+
+
+@st.cache_resource(show_spinner="Première ouverture : indexation des documents (environ 1 minute)...")
+def ensure_index() -> None:
+    """
+    Sur un serveur neuf (Streamlit Cloud, conteneur Docker), la base
+    vectorielle n'existe pas encore : data/vector_db/ n'est pas versionné.
+    cache_resource garantit que l'indexation ne tourne qu'une fois par
+    processus, même si plusieurs visiteurs arrivent en même temps.
+    """
+    if not config.VECTOR_DB_DIR.exists():
+        build_vector_store(load_and_split())
+
+
+ensure_index()
+
 # --- Barre latérale : documents et réglages ---
 with st.sidebar:
     st.header("Documents")
@@ -26,18 +47,21 @@ with st.sidebar:
         for p in config.DOCUMENTS_DIR.rglob("*")
         if p.suffix.lower() in {".md", ".txt", ".pdf"}
     )
-    st.caption(f"{len(documents)} fichier(s) dans data/documents/")
-    st.markdown("\n".join(f"- `{name}`" for name in documents))
+    with st.expander(f"{len(documents)} fichier(s) indexé(s)"):
+        st.markdown("\n".join(f"- `{name}`" for name in documents))
 
-    uploaded = st.file_uploader("Ajouter des documents", type=["md", "txt", "pdf"], accept_multiple_files=True)
-    if st.button("Indexer", disabled=not uploaded, use_container_width=True):
-        for file in uploaded:
-            (config.DOCUMENTS_DIR / file.name).write_bytes(file.getvalue())
-        with st.spinner("Découpage et calcul des embeddings..."):
-            build_vector_store(load_and_split())
-            reset_chain()  # la chaîne en cache pointait sur l'ancien index
-        st.success(f"{len(uploaded)} document(s) ajouté(s) et indexé(s).")
-        st.rerun()
+    if config.DEMO_MODE:
+        st.caption("Démo publique : l'ajout de documents est désactivé. Clone le projet pour indexer les tiens.")
+    else:
+        uploaded = st.file_uploader("Ajouter des documents", type=["md", "txt", "pdf"], accept_multiple_files=True)
+        if st.button("Indexer", disabled=not uploaded, use_container_width=True):
+            for file in uploaded:
+                (config.DOCUMENTS_DIR / file.name).write_bytes(file.getvalue())
+            with st.spinner("Découpage et calcul des embeddings..."):
+                build_vector_store(load_and_split())
+                reset_chain()  # la chaîne en cache pointait sur l'ancien index
+            st.success(f"{len(uploaded)} document(s) ajouté(s) et indexé(s).")
+            st.rerun()
 
     st.header("Réglages")
     st.markdown(
@@ -51,10 +75,16 @@ with st.sidebar:
 
 # --- Zone de chat ---
 st.title("🔎 RAG sur mes notes")
-st.caption("Les réponses sont générées uniquement à partir de tes documents, avec leurs sources.")
+st.caption(
+    "Les réponses sont générées uniquement à partir des documents indexés "
+    "(notes DevOps, documentation Kubernetes, livre Pro Git), avec leurs sources."
+)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+if not st.session_state.messages:
+    st.markdown("**Exemples de questions :**\n" + "\n".join(f"- {q}" for q in EXAMPLES))
 
 
 def show_answer(message: dict) -> None:
@@ -68,9 +98,20 @@ def show_answer(message: dict) -> None:
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        show_answer(message) if message["role"] == "assistant" else st.markdown(message["content"])
+        # Un if/else classique, pas une expression ternaire : Streamlit affiche
+        # automatiquement la valeur de toute expression seule sur sa ligne
+        # ("magic"), ce qui faisait planter la page dès la 2e question.
+        if message["role"] == "assistant":
+            show_answer(message)
+        else:
+            st.markdown(message["content"])
 
-if question := st.chat_input("Pose une question sur tes notes..."):
+asked = sum(m["role"] == "user" for m in st.session_state.messages)
+limit_reached = config.DEMO_MODE and asked >= config.DEMO_MAX_QUESTIONS
+if limit_reached:
+    st.info(f"Limite de {config.DEMO_MAX_QUESTIONS} questions atteinte pour cette démo publique.")
+
+if question := st.chat_input("Pose une question sur tes notes...", disabled=limit_reached):
     st.session_state.messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
         st.markdown(question)

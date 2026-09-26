@@ -1,0 +1,176 @@
+<!-- Source : Pro Git, Scott Chacon et Ben Straub, traduction française, https://git-scm.com/book/fr/v2
+     Licence : CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/ -->
+
+### Annuler des actions
+
+À tout moment, vous pouvez désirer annuler une de vos dernières actions.
+Dans cette section, nous allons passer en revue quelques outils de base permettant d'annuler des modifications.
+Il faut être très attentif car certaines de ces annulations sont définitives (elles ne peuvent pas être elles-mêmes annulées).
+C'est donc un des rares cas d'utilisation de Git où des erreurs de manipulation peuvent entraîner des pertes définitives de données.
+
+Une des annulations les plus communes apparaît lorsqu'on valide une modification trop tôt en oubliant d'ajouter certains fichiers, ou si on se trompe dans le message de validation.
+Si vous souhaitez rectifier cette erreur, vous pouvez valider le complément de modification avec l'option `--amend` :
+
+$ git commit --amend
+
+Cette commande prend en compte la zone d'index et l'utilise pour le _commit_.
+Si aucune modification n'a été réalisée depuis la dernière validation (par exemple en lançant cette commande immédiatement après la dernière validation), alors l'instantané sera identique et la seule modification à introduire sera le message de validation.
+
+L'éditeur de message de validation démarre, mais il contient déjà le message de la validation précédente.
+Vous pouvez éditer ce message normalement, mais il écrasera le message de la validation précédente.
+
+Par exemple, si vous validez une version puis réalisez que vous avez oublié d'indexer les modifications d'un fichier que vous vouliez ajouter à ce _commit_, vous pouvez faire quelque chose comme ceci :
+
+$ git commit -m 'validation initiale'
+$ git add fichier_oublie
+$ git commit --amend
+
+Vous n'aurez au final qu'un unique _commit_ — la seconde validation remplace le résultat de la première.
+
+Il est important de comprendre que lorsque vous être en train de modifier votre dernier commit, vous n'êtes pas vraiment en train de le réparer, mais plutôt de le _remplacer_ complètement par un commit nouveau, amélioré qui écarte l'ancien commit et vient à sa place.
+Dans les faits, c'est comme si l'ancien commit n'avait jamais eu lieu, et il n'apparaîtra plus dans l'historique de votre dépôt.
+
+L'intérêt immédiat de la rectification de commit est de faire des petites améliorations de votre dernier commit, sans encombrer l'historique de votre dépôt avec des messages de validations de la forme « Oups, j'avais oublié ce fichier » ou « Zut, correction d'une faute sur le dernier commit ».
+
+Ne rectifiez que les commits qui ne sont que locaux et n'ont pas été poussés.
+La rectification de commit qui ont été poussés et la poussée en force de branche risque de créer des problèmes avec vos collaborateurs.
+Pour plus d'information sur ce qui arrive si vous le faites et comment s'en sortir en fin de compte, lisez 
+
+Les deux sections suivantes démontrent comment bricoler les modifications dans votre zone d'index et votre zone de travail.
+Un point sympathique est que la commande permettant de connaître l'état de ces deux zones vous rappelle aussi comment annuler les modifications.
+Par exemple, supposons que vous avez modifié deux fichiers et voulez les valider comme deux modifications indépendantes, mais que vous avez tapé accidentellement `git add *` et donc indexé les deux.
+Comment annuler l'indexation d'un des fichiers ? La commande `git status` vous le rappelle :
+
+$ git add .
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+    renommé :   README.md -> README
+    modifié :   CONTRIBUTING.md
+
+Juste sous le texte « Modifications qui seront validées », elle vous indique d'utiliser `git reset HEAD <fichier>...` pour désindexer un fichier.
+Utilisons donc ce conseil pour désindexer le fichier `CONTRIBUTING.md` :
+
+$ git reset HEAD CONTRIBUTING.md
+Modifications non indexées après reset :
+M       CONTRIBUTING.md
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        renommé :         README.md -> README
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        modifié :         CONTRIBUTING.md
+
+La commande à taper peut sembler étrange mais elle fonctionne.
+Le fichier `CONTRIBUTING.md` est modifié mais de retour à l'état non indexé.
+
+`git reset` _peut_ être une commande dangereuse, surtout conjuguée avec l'option `--hard`.
+Cependant, dans le cas présent, le fichier dans la copie de travail n'a pas été touché, donc c'est relativement bénin.
+
+Pour l'instant, cette invocation magique est la seule à connaître pour la commande `git reset`.
+Nous entrerons plus en détail sur ce que `reset` réalise et comment le maîtriser pour faire des choses intéressantes dans 
+
+Que faire si vous réalisez que vous ne souhaitez pas conserver les modifications du fichier `CONTRIBUTING.md` ?
+Comment le réinitialiser facilement, le ramener à son état du dernier instantané (ou lors du clonage, ou dans l'état dans lequel vous l'avez obtenu dans votre copie de travail) ?
+Heureusement, `git status` vous indique comment procéder.
+Dans le résultat de la dernière commande, la zone de travail ressemble à ceci :
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        modifié :         CONTRIBUTING.md
+
+Ce qui vous indique de façon explicite comment annuler des modifications que vous avez faites.
+Faisons comme indiqué :
+
+$ git checkout -- CONTRIBUTING.md
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        renommé :         README.md -> README
+
+Vous pouvez constater que les modifications ont été annulées.
+
+Vous devriez aussi vous apercevoir que c'est une commande dangereuse : toutes les modifications que vous auriez réalisées sur ce fichier ont disparu — vous venez tout juste de l'écraser avec un autre fichier.
+N'utilisez jamais cette commande à moins d'être vraiment sûr de ne pas vouloir de ces modifications.
+
+Si vous souhaitez seulement écarter momentanément cette modification, nous verrons comment mettre de côté et créer des branches dans le chapitre  ; ce sont de meilleures façons de procéder.
+
+Souvenez-vous, tout ce qui a été __validé__ dans Git peut quasiment toujours être récupéré.
+Y compris des _commits_ sur des branches qui ont été effacées ou des _commits_ qui ont été écrasés par une validation avec l'option `--amend` (se référer au chapitre  pour la récupération de données).
+Cependant, tout ce que vous perdez avant de l'avoir validé n'a aucune chance d'être récupérable via Git.
+
+Git version 2.25.0 a introduit une nouvelle commande : `git restore`.
+C'est fondamentalement une alternative à `git reset` que nous venons de traiter.
+Depuis Git version 2.25.0, Git utilisera `git restore` au lieu de `git reset` pour beaucoup d'opérations de réinitialisation.
+
+Retraçons nos pas, et réinitialisons les choses avec `git restore` au lieu de `git reset`.
+
+Les deux sections suivantes démontrent comment travailler avec votre zone d'index et votre répertoire de travail au moyen de `git restore`.
+Le point positif est que la commande que vous utilisez pour déterminer l'état de ces deux zones vous rappelle comment réinitialiser les modifications qui s'y appliquent.
+Par exemple, disons que vous avez modifié deux fichiers et que vous souhaitez les valider comme deux modifications distinctes, mais que vous avez accidentellement tapé `git add *` et avez indexé les deux.
+Comment désindexer l'une de deux ?
+la commande `git status` vous le rappelle :
+
+$ git add *
+$ git status
+Sur la branche master
+Modifications qui seront validées :
+  (utilisez "git restore --staged <fichier>..." pour désindexer)
+	modifié :   CONTRIBUTING.md
+	renommé :   README.md -> README
+
+Juste en dessous du texte "`Modifications qui seront validées`", il nous indique d'utiliser `git restore --staged <fichier>...` pour désindexer.
+Utilisons ce conseil pour désindexer le fichier `CONTRIBUTING.md`.
+
+$ git restore --staged CONTRIBUTING.md
+$ git status
+Sur la branche master
+Modifications qui seront validées :
+  (utilisez "git restore --staged <fichier>..." pour désindexer)
+	renommé :    README.md -> README
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add/rm <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git restore <fichier>..." pour annuler les modifications dans le répertoire de travail)
+	modifié :    CONTRIBUTING.md
+
+Le fichier `CONTRIBUTING.md` est modifié mais une fois de plus non-indexé.
+
+Que faire si vous vous apercevez que vous ne voulez pas garder les modifications du fichier `CONTRIBUTING.md` ?
+Comment le modifier simplement -- le réinitialiser à l'état qu'il avait lors de votre dernier commit (ou lors du clonage ou de toute manière où il apparaissait dans le dépôt) ?
+Heureusement, `git status` indique aussi comment faire.
+Dans la sortie du dernier exemple, la zone non-indexée ressemblait à ceci :
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add/rm <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git restore <fichier>..." pour annuler les modifications dans le répertoire de travail)
+	modifié :   CONTRIBUTING.md
+
+Cela vous indique assez explicitement comment laisser les modifications que vous avez faites.
+Faisons comme indiqué :
+
+$ git restore CONTRIBUTING.md
+$ git status
+Sur la branche master
+Modifications qui seront validées :
+  (utilisez "git restore --staged <fichier>..." pour désindexer)
+	renommé :    README.md -> README
+
+Il faut bien comprendre que `git restore <fichier>` est une commande dangereuse.
+Toute modification locale à ce fichier va être perdue -- Git remplace ce fichier par la version la plus récemment validée.
+N'utilisez pas cette commande à moins d'être absolument certain de ne pas vouloir de ces modifications locales.

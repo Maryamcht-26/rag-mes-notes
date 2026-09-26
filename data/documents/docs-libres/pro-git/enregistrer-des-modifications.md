@@ -1,0 +1,471 @@
+<!-- Source : Pro Git, Scott Chacon et Ben Straub, traduction française, https://git-scm.com/book/fr/v2
+     Licence : CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/ -->
+
+### Enregistrer des modifications dans le dépôt
+
+Vous avez à présent un dépôt Git valide et une extraction ou copie de travail du projet.
+Vous devez faire quelques modifications et valider des instantanés de ces modifications dans votre dépôt chaque fois que votre projet atteint un état que vous souhaitez enregistrer.
+
+Souvenez-vous que chaque fichier de votre copie de travail peut avoir deux états : sous suivi de version ou non suivi.
+Les fichiers suivis sont les fichiers qui appartenaient déjà au dernier instantané ; ils peuvent être inchangés, modifiés ou indexés.
+En résumé, les fichiers suivis sont ceux que Git connaît.
+
+Tous les autres fichiers sont non suivis — tout fichier de votre copie de travail qui n'appartenait pas à votre dernier instantané et n'a pas été indexé.
+Quand vous clonez un dépôt pour la première fois, tous les fichiers seront sous suivi de version et inchangés car Git vient tout juste de les extraire et vous ne les avez pas encore édités.
+
+Au fur et à mesure que vous éditez des fichiers, Git les considère comme modifiés, car vous les avez modifiés depuis le dernier instantané.
+Vous *indexez* ces fichiers modifiés et vous enregistrez toutes les modifications indexées, puis ce cycle se répète.
+
+L'outil principal pour déterminer quels fichiers sont dans quel état est la commande `git status`.
+Si vous lancez cette commande juste après un clonage, vous devriez voir ce qui suit :
+
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+rien à valider, la copie de travail est propre
+
+Ce message signifie que votre copie de travail est propre, en d'autres termes, aucun fichier suivi n'a été modifié.
+Git ne voit pas non plus de fichiers non-suivis, sinon ils seraient listés ici.
+Enfin, la commande vous indique sur quelle branche vous êtes.
+Pour l'instant, c'est toujours ``master'', qui correspond à la valeur par défaut ; nous ne nous en soucierons pas maintenant.
+Dans , nous parlerons plus en détail des branches et des références.
+
+Supposons que vous souhaitez ajouter un nouveau fichier au projet, un simple fichier LISEZMOI.
+Si le fichier n'existait pas auparavant, et si vous lancez `git status`, vous voyez votre fichier non suivi comme suit :
+
+$ echo 'Mon Projet' > LISEZMOI
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Fichiers non suivis:
+  (utilisez "git add <fichier>..." pour inclure dans ce qui sera validé)
+
+        LISEZMOI
+
+aucune modification ajoutée à la validation mais des fichiers non suivis sont présents (utilisez "git add" pour les suivre)
+
+Vous pouvez constater que votre nouveau fichier `LISEZMOI` n'est pas en suivi de version, car il apparaît dans la section « Fichiers non suivis » de l'état de la copie de travail.
+« non suivi » signifie simplement que Git détecte un fichier qui n'était pas présent dans le dernier instantané ; Git ne le placera sous suivi de version que quand vous lui indiquerez de le faire.
+Ce comportement permet de ne pas placer accidentellement sous suivi de version des fichiers binaires générés ou d'autres fichiers que vous ne voulez pas inclure.
+Mais vous voulez inclure le fichier `LISEZMOI` dans l'instantané, alors commençons à suivre ce fichier.
+
+Pour commencer à suivre un nouveau fichier, vous utilisez la commande `git add`.
+Pour commencer à suivre le fichier `LISEZMOI`, vous pouvez entrer ceci :
+
+$ git add LISEZMOI
+
+Si vous lancez à nouveau la commande `git status`, vous pouvez constater que votre fichier `LISEZMOI` est maintenant suivi et indexé :
+
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git restore --staged <fichier>..." pour désindexer)
+
+        nouveau fichier : LISEZMOI
+
+Vous pouvez affirmer qu'il est indexé car il apparaît dans la section « Modifications qui seront validées ».
+Si vous validez à ce moment, la version du fichier à l'instant où vous lancez `git add` est celle qui sera dans l'historique des instantanés.
+Vous pouvez vous souvenir que lorsque vous avez précédemment lancé `git init`, vous avez ensuite lancé `git add (fichiers)` — c'était bien sûr pour commencer à placer sous suivi de version les fichiers de votre répertoire de travail.
+La commande `git add` accepte en paramètre un chemin qui correspond à un fichier ou un répertoire ; dans le cas d'un répertoire, la commande ajoute récursivement tous les fichiers de ce répertoire.
+
+Maintenant, modifions un fichier qui est déjà sous suivi de version.
+Si vous modifiez le fichier sous suivi de version appelé `CONTRIBUTING.md` et que vous lancez à nouveau votre commande `git status`, vous verrez ceci :
+
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        nouveau fichier : LISEZMOI
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        modifié :         CONTRIBUTING.md
+
+Le fichier `CONTRIBUTING.md` apparaît sous la section nommée « Modifications qui ne seront pas validées » ce qui signifie que le fichier sous suivi de version a été modifié dans la copie de travail mais n'est pas encore indexé.
+Pour l'indexer, il faut lancer la commande `git add`.
+`git add` est une commande multi-usage — elle peut être utilisée pour placer un fichier sous suivi de version, pour indexer un fichier ou pour d'autres actions telles que marquer comme résolus des conflits de fusion de fichiers.
+Sa signification s'approche plus de « ajouter ce contenu pour la prochaine validation » que de « ajouter ce contenu au projet ».
+Lançons maintenant `git add` pour indexer le fichier `CONTRIBUTING.md`, et relançons la commande `git status` :
+
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        nouveau fichier : LISEZMOI
+        modifié :         CONTRIBUTING.md
+
+À présent, les deux fichiers sont indexés et feront partie de la prochaine validation.
+Mais supposons que vous souhaitiez apporter encore une petite modification au fichier `CONTRIBUTING.md` avant de réellement valider la nouvelle version.
+Vous l'ouvrez à nouveau, réalisez la petite modification et vous voilà prêt à valider.
+Néanmoins, vous lancez `git status` une dernière fois :
+
+$ vim CONTRIBUTING.md
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        nouveau fichier : LISEZMOI
+        modifié :         CONTRIBUTING.md
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        modifié :         CONTRIBUTING.md
+
+Que s'est-il donc passé ?
+À présent, `CONTRIBUTING.md` apparaît à la fois comme indexé et non indexé.
+En fait, Git indexe un fichier dans son état au moment où la commande `git add` est lancée.
+Si on valide les modifications maintenant, la version de `CONTRIBUTING.md` qui fera partie de l'instantané est celle correspondant au moment où la commande `git add CONTRIBUTING.md` a été lancée, et non la version actuellement présente dans la copie de travail au moment où la commande `git commit` est lancée.
+Si le fichier est modifié après un `git add`, il faut relancer `git add` pour prendre en compte l'état actuel de la copie de travail :
+
+$ git add CONTRIBUTING.md
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        nouveau fichier : LISEZMOI
+        modifié :         CONTRIBUTING.md
+
+Bien que `git status` soit informatif, il est aussi plutôt verbeux.
+Git a aussi une option de status court qui permet de voir les modifications de façon plus compacte.
+Si vous lancez `git status -s` ou `git status --short`, vous obtenez une information bien plus simple.
+
+$ git status -s
+ M README
+MM Rakefile
+A  lib/git.rb
+M  lib/simplegit.rb
+?? LICENSE.txt
+
+Les nouveaux fichiers qui ne sont pas suivis sont précédés de `??`, les fichiers nouveaux et indexés sont précédés de `A`, les fichiers modifiés de `M` et ainsi de suite.
+Il y a deux colonnes d'état - celle de gauche indique l'état de l'index et celle de droite l'état du dossier de travail.
+Donc l'exemple ci-dessus indique que le fichier `README` est modifié dans le répertoire de travail mais n'est pas encore indexé, tandis que le fichier `lib/simplegit.rb` est modifié et indexé.
+Le fichier `Rakefile` a été modifié, indexé puis modifié à nouveau, de sorte qu'il a des modifications à la fois indexées et non-indexées.
+
+Il apparaît souvent qu'un type de fichiers présent dans la copie de travail ne doit pas être ajouté automatiquement ou même ne doit pas apparaître comme fichier potentiel pour le suivi de version.
+Ce sont par exemple des fichiers générés automatiquement tels que les fichiers de journaux ou de sauvegardes produits par l'outil que vous utilisez.
+Dans un tel cas, on peut énumérer les patrons de noms de fichiers à ignorer dans un fichier `.gitignore`.
+Voici ci-dessous un exemple de fichier `.gitignore` :
+
+$ cat .gitignore
+*.[oa]
+*~
+
+La première ligne ordonne à Git d'ignorer tout fichier se terminant en `.o` ou `.a` — des fichiers objet ou archive qui sont généralement produits par la compilation d'un programme.
+La seconde ligne indique à Git d'ignorer tous les fichiers se terminant par un tilde (`~`), ce qui est le cas des noms des fichiers temporaires pour de nombreux éditeurs de texte tels qu'Emacs.
+On peut aussi inclure un répertoire `log`, `tmp` ou `pid`, ou le répertoire de documentation générée automatiquement, ou tout autre fichier.
+Renseigner un fichier `.gitignore` avant de commencer à travailler est généralement une bonne idée qui évitera de valider par inadvertance des fichiers qui ne doivent pas apparaître dans le dépôt Git.
+
+Les règles de construction des patrons à placer dans le fichier `.gitignore` sont les suivantes :
+
+* les lignes vides ou commençant par `#` sont ignorées ;
+* les patrons standards de fichiers sont utilisables et seront appliqués récursivement dans tout l'arbre de travail ;
+* si le patron commence par une barre oblique (`/), le patron n'est pas récursif ;
+* si le patron se termine par une barre oblique (`/`), il indique un répertoire ;
+* un patron commençant par un point d'exclamation (`!`) indique des fichiers à inclure malgré les autres règles.
+
+Les patrons standards de fichiers sont des expressions régulières simplifiées utilisées par les shells.
+Un astérisque (`\*`) correspond à un ou plusieurs caractères ; `[abc]` correspond à un des trois caractères listés dans les crochets, donc a ou b ou c ; un point d'interrogation (`?`) correspond à un unique caractère ; des crochets entourant des caractères séparés par un tiret (`[0-9]`) correspond à un caractère dans l'intervalle des deux caractères indiqués, donc ici de 0 à 9.
+Vous pouvez aussi utiliser deux astérisques pour indiquer une série de répertoires inclus ; `a/**/z` correspond donc à `a/z`, `a/b/z`, `a/b/c/z` et ainsi de suite.
+
+Voici un autre exemple de fichier `.gitignore` :
+
+# pas de fichier .a
+*.a
+
+# mais suivre lib.a malgré la règle précédente
+!lib.a
+
+# ignorer uniquement le fichier TODO à la racine du projet
+/TODO
+
+# ignorer tous les fichiers dans le répertoire build
+build/
+
+# ignorer doc/notes.txt, mais pas doc/server/arch.txt
+doc/*.txt
+
+# ignorer tous les fichiers .txt sous le répertoire doc/
+doc/**/*.txt
+
+GitHub maintient une liste assez complète d'exemples de fichiers `.gitignore` correspondant à de nombreux types de projets et langages.
+Voir https://github.com/github/gitignore[] pour obtenir un point de départ pour votre projet.
+
+Dans un cas simple, un dépôt peut n'avoir qu'un unique fichier `.gitignore` à la racine de l'arbre de travail, qui s'applique récursivement dans le dépôt.
+Cependant, il est aussi possible d'avoir des fichiers `.gitignore` dans les sous-répertoires.
+Les règles dans ces fichiers `.gitignore` locaux ne s'appliquent qu'à partir du répertoire où ils se trouvent.
+Le dépôt des sources du noyau Linux contient 206 fichier `.gitignore`.
+
+Les détails de l'utilisation de multiples fichiers `.gitignore` dépassent l'objet de ce livre ; référez-vous à `man gitignore` pour plus d'information.
+
+Si le résultat de la commande `git status` est encore trop vague — lorsqu'on désire savoir non seulement quels fichiers ont changé mais aussi ce qui a changé dans ces fichiers — on peut utiliser la commande `git diff`.
+Cette commande sera traitée en détail plus loin ; mais elle sera vraisemblablement utilisée le plus souvent pour répondre aux questions suivantes : qu'est-ce qui a été modifié mais pas encore indexé ? Quelle modification a été indexée et est prête pour la validation ?
+Là où `git status` répond de manière générale à ces questions, `git diff` montre les lignes exactes qui ont été ajoutées, modifiées ou effacées — le patch en somme.
+
+Supposons que vous éditez et indexez à nouveau le fichier `LISEZMOI` et que vous éditez `CONTRIBUTING.md` sans l'indexer.
+Si vous lancer la commande `git status`, vous allez voir une fois encore quelque chose comme :
+
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        nouveau fichier : LISEZMOI
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        modifié :         CONTRIBUTING.md
+
+Pour visualiser ce qui a été modifié mais pas encore indexé, tapez `git diff` sans autre argument :
+
+$ git diff
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index 8ebb991..643e24f 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -65,7 +65,8 @@ branch directly, things can get messy.
+ Please include a nice description of your changes when you submit your PR;
+ if we have to read the whole diff to figure out why you're contributing
+ in the first place, you're less likely to get feedback and have your change
+-merged in.
++merged in. Also, split your changes into comprehensive chunks if you patch is
++longer than a dozen lines.
+
+ If you are starting to work on a particular area, feel free to submit a PR
+ that highlights your work in progress (and note in the PR title that it's
+
+Cette commande compare le contenu du répertoire de travail avec la zone d'index.
+Le résultat vous indique les modifications réalisées mais non indexées.
+
+Si vous souhaitez visualiser les modifications indexées qui feront partie de la prochaine validation, vous pouvez utiliser `git diff --cached` (avec les versions 1.6.1 et supérieures de Git, vous pouvez aussi utiliser `git diff --staged`, qui est plus mnémotechnique).
+Cette commande compare les fichiers indexés et le dernier instantané :
+
+$ git diff --staged
+diff --git a/LISEZMOI b/LISEZMOI
+new file mode 100644
+index 0000000..1e17b0c
+--- /dev/null
++++ b/LISEZMOI
+@@ -0,0 +1 @@
++Mon Projet
+
+Il est important de noter que `git diff` ne montre pas les modifications réalisées depuis la dernière validation — seulement les modifications qui sont non indexées.
+Cela peut introduire une confusion car si tous les fichiers modifiés ont été indexés, `git diff` n'indiquera aucun changement.
+
+Par exemple, si vous indexez le fichier `CONTRIBUTING.md` et l'éditez ensuite, vous pouvez utiliser `git diff` pour visualiser les modifications indexées et non indexées de ce fichier.
+Si l'état est le suivant :
+
+$ git add CONTRIBUTING.md
+$ echo 'ligne de test' >> CONTRIBUTING.md
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        nouveau fichier : CONTRIBUTING.md
+
+Modifications qui ne seront pas validées :
+  (utilisez "git add <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        modifié :         CONTRIBUTING.md
+
+À présent, vous pouvez utiliser `git diff` pour visualiser les modifications non indexées :
+
+$ git diff
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index 643e24f..87f08c8 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -119,3 +119,4 @@ at the
+ ## Starter Projects
+
+ See our [projects list](https://github.com/libgit2/libgit2/blob/development/PROJECTS.md).
++ligne de test
+
+et `git diff --cached` pour visualiser ce qui a été indexé jusqu'à maintenant :
+
+$ git diff --cached
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index 8ebb991..643e24f 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -65,7 +65,8 @@ branch directly, things can get messy.
+ Please include a nice description of your changes when you submit your PR;
+ if we have to read the whole diff to figure out why you're contributing
+ in the first place, you're less likely to get feedback and have your change
+-merged in.
++merged in. Also, split your changes into comprehensive chunks if you patch is
++longer than a dozen lines.
+
+ If you are starting to work on a particular area, feel free to submit a PR
+ that highlights your work in progress (and note in the PR title that it's
+
+Nous allons continuer à utiliser la commande `git diff` de différentes manières par la suite.
+Il existe une autre manière de visualiser les différences si vous préférez un outil graphique ou externe.
+Si vous lancez `git difftool` au lieu de `git diff`, vous pourrez visualiser les différences grâce à une application telle que Araxis, emerge, vimdiff ou autre.
+Lancez `git difftool --tool-help` pour connaître les applications disponibles sur votre système.
+
+Maintenant que votre zone d'index est dans l'état désiré, vous pouvez valider vos modifications.
+Souvenez-vous que tout ce qui est encore non indexé — tous les fichiers qui ont été créés ou modifiés mais n'ont pas subi de `git add` depuis que vous les avez modifiés — ne feront pas partie de la prochaine validation.
+Ils resteront en tant que fichiers modifiés sur votre disque.
+Dans notre cas, la dernière fois que vous avez lancé `git status`, vous avez vérifié que tout était indexé, et vous êtes donc prêt à valider vos modifications.
+La manière la plus simple de valider est de taper `git commit` :
+
+$ git commit
+
+Cette action lance votre éditeur choisi.
+
+Ceci est paramétré par la variable d'environnement `EDITOR` de votre shell — habituellement vim ou Emacs, mais vous pouvez le paramétrer spécifiquement pour Git en utilisant la commande `git config --global core.editor` comme nous l'avons vu au ).
+
+L'éditeur affiche le texte suivant (par exemple, ici Vim) :
+
+# Veuillez saisir le message de validation pour vos modifications. Les lignes
+# commençant par '#' seront ignorées, et un message vide abandonne la validation.
+# Sur la branche master
+# Votre branche est à jour avec 'origin/master'.
+#
+# Modifications qui seront validées :
+#       nouveau fichier : LISEZMOI
+#       modifié :         CONTRIBUTING.md
+#
+
+Vous constatez que le message de validation par défaut contient une ligne vide suivie en commentaire par le résultat de la commande `git status`.
+Vous pouvez effacer ces lignes de commentaire et saisir votre propre message de validation, ou vous pouvez les laisser en place pour vous aider à vous rappeler ce que vous êtes en train de valider.
+
+Pour un rappel plus explicite de ce que vous avez modifié, vous pouvez aussi passer l'option `-v` à la commande `git commit`.
+Cette option place le résultat du diff en commentaire dans l'éditeur pour vous permettre de visualiser exactement ce que vous avez modifié.
+
+Quand vous quittez l'éditeur (après avoir sauvegardé le message), Git crée votre _commit_ avec ce message de validation (après avoir retiré les commentaires et le diff).
+
+Autrement, vous pouvez spécifier votre message de validation en ligne avec la commande `git commit` en le saisissant après l'option `-m`, comme ceci :
+
+$ git commit -m "Story 182: Fix benchmarks for speed"
+ 2 files changed, 2 insertions(+)
+ create mode 100644 LISEZMOI
+
+À présent, vous avez créé votre premier _commit_ !
+Vous pouvez constater que le _commit_ vous fournit quelques informations sur lui-même : sur quelle branche vous avez validé (`master`), quelle est sa somme de contrôle SHA-1 (`463dc4f`), combien de fichiers ont été modifiés, et quelques statistiques sur les lignes ajoutées et effacées dans ce _commit_.
+
+Souvenez-vous que la validation enregistre l'instantané que vous avez préparé dans la zone d'index.
+Tout ce que vous n'avez pas indexé est toujours en état modifié ; vous pouvez réaliser une nouvelle validation pour l'ajouter à l'historique.
+À chaque validation, vous enregistrez un instantané du projet en forme de jalon auquel vous pourrez revenir ou avec lequel comparer votre travail ultérieur.
+
+Bien qu'il soit incroyablement utile de pouvoir organiser les _commits_ exactement comme on l'entend, la gestion de la zone d'index est parfois plus complexe que nécessaire dans le cadre d'une utilisation normale.
+Si vous souhaitez éviter la phase de placement des fichiers dans la zone d'index, Git fournit un raccourci très simple.
+L'ajout de l'option `-a` à la commande `git commit` ordonne à Git de placer automatiquement tout fichier déjà en suivi de version dans la zone d'index avant de réaliser la validation, évitant ainsi d'avoir à taper les commandes `git add` :
+
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui ne seront pas validées :
+  (utilisez "git add <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        modifié :         CONTRIBUTING.md
+
+aucune modification n'a été ajoutée à la validation (utilisez "git add" ou "git commit -a")
+$ git commit -a -m 'added new benchmarks'
+ 1 file changed, 5 insertions(+), 0 deletions(-)
+
+Notez bien que vous n'avez pas eu à lancer `git add` sur le fichier `CONTRIBUTING.md` avant de valider.
+
+Pour effacer un fichier de Git, vous devez l'éliminer des fichiers en suivi de version (plus précisément, l'effacer dans la zone d'index) puis valider.
+La commande `git rm` réalise cette action mais efface aussi ce fichier de votre copie de travail de telle sorte que vous ne le verrez pas réapparaître comme fichier non suivi en version à la prochaine validation.
+
+Si vous effacez simplement le fichier dans votre copie de travail, il apparaît sous la section « Modifications qui ne seront pas validées » (c'est-à-dire, _non indexé_) dans le résultat de `git status` :
+
+$ rm PROJECTS.md
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui ne seront pas validées :
+  (utilisez "git add/rm <fichier>..." pour mettre à jour ce qui sera validé)
+  (utilisez "git checkout -- <fichier>..." pour annuler les modifications dans la copie de travail)
+
+        supprimé :        PROJECTS.md
+
+aucune modification n'a été ajoutée à la validation (utilisez "git add" ou "git commit -a")
+
+Ensuite, si vous lancez `git rm`, l'effacement du fichier est indexé :
+
+$ git rm PROJECTS.md
+rm 'PROJECTS.md'
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        supprimé :        PROJECTS.md
+
+Lors de la prochaine validation, le fichier sera absent et non-suivi en version.
+Si vous avez auparavant modifié et indexé le fichier, son élimination doit être forcée avec l'option `-f`.
+C'est une mesure de sécurité pour empêcher un effacement accidentel de données qui n'ont pas encore été enregistrées dans un instantané et qui seraient définitivement perdues.
+
+Un autre scénario serait de vouloir abandonner le suivi de version d'un fichier tout en le conservant dans la copie de travail.
+Ceci est particulièrement utile lorsqu'on a oublié de spécifier un patron dans le fichier `.gitignore` et on a accidentellement indexé un fichier, tel qu'un gros fichier de journal ou une série d'archives de compilation `.a`.
+Pour réaliser ce scénario, utilisez l'option `--cached` :
+
+$ git rm --cached LISEZMOI
+
+Vous pouvez spécifier des noms de fichiers ou de répertoires, ou des patrons de fichiers à la commande `git rm`.
+Cela signifie que vous pouvez lancer des commandes telles que :
+
+$ git rm log/\*.log
+
+Notez bien la barre oblique inverse (`\`) devant `\*`.
+Il est nécessaire d'échapper le caractère `\*` car Git utilise sa propre expansion de nom de fichier en addition de l'expansion du shell.
+Ce caractère d'échappement doit être omis sous Windows si vous utilisez le terminal système.
+Cette commande efface tous les fichiers avec l'extension `.log` présents dans le répertoire `log/`.
+Vous pouvez aussi lancer une commande telle que :
+
+$ git rm \*~
+
+Cette commande élimine tous les fichiers se terminant par `~`.
+
+À la différence des autres VCS, Git ne suit pas explicitement les mouvements des fichiers.
+Si vous renommez un fichier suivi par Git, aucune méta-donnée indiquant le renommage n'est stockée par Git.
+Néanmoins, Git est assez malin pour s'en apercevoir après coup — la détection de mouvement de fichier sera traitée plus loin.
+
+De ce fait, que Git ait une commande `mv` peut paraître trompeur.
+Si vous souhaitez renommer un fichier dans Git, vous pouvez lancer quelque chose comme :
+
+$ git mv nom_origine nom_cible
+
+et cela fonctionne.
+En fait, si vous lancez quelque chose comme ceci et inspectez le résultat d'une commande `git status`, vous constaterez que Git gère le renommage de fichier :
+
+$ git mv LISEZMOI.txt LISEZMOI
+$ git status
+Sur la branche master
+Votre branche est à jour avec 'origin/master'.
+Modifications qui seront validées :
+  (utilisez "git reset HEAD <fichier>..." pour désindexer)
+
+        renommé :         LISEZMOI.txt -> LISEZMOI
+
+Néanmoins, cela revient à lancer les commandes suivantes :
+
+$ mv LISEZMOI.txt LISEZMOI
+$ git rm LISEZMOI.txt
+$ git add LISEZMOI
+
+Git trouve implicitement que c'est un renommage, donc cela importe peu si vous renommez un fichier de cette manière ou avec la commande `mv`.
+La seule différence réelle est que `git mv` ne fait qu'une commande à taper au lieu de trois — c'est une commande de convenance.
+Le point principal est que vous pouvez utiliser n'importe quel outil pour renommer un fichier, et traiter les commandes `add`/`rm` plus tard, avant de valider la modification.

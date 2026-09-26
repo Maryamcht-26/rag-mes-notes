@@ -23,8 +23,13 @@ VECTOR_DB_DIR = BASE_DIR / "data" / "vector_db"
 # --- Chunking ---
 # Taille d'un chunk en caractères, et chevauchement entre deux chunks
 # consécutifs pour ne pas couper une idée en deux.
-CHUNK_SIZE = 800
-CHUNK_OVERLAP = 120
+# 500 et non 800 (V1.3) : le modèle d'embeddings ignore tout ce qui dépasse
+# ~100 mots (vérifié : deux textes identiques sur 100 mots puis différents
+# donnent le même vecteur). Un chunk de 800 caractères (~130 mots) avait
+# donc sa fin invisible pour la recherche sémantique. Mesuré sur 32
+# questions et 17 documents : Hit@1 47% -> 62%, MRR 0.57 -> 0.68.
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 75
 
 # --- Embeddings ---
 # Modèle open-source, léger, tourne en local (CPU) sans clé API, via
@@ -46,6 +51,8 @@ TOP_K = 4
 RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid")
 # Poids de chaque recherche dans la fusion hybride (dense, BM25).
 HYBRID_WEIGHTS = (0.5, 0.5)
+# Nombre de candidats renvoyés par CHAQUE recherche avant la fusion hybride.
+HYBRID_CANDIDATES = 20
 
 # --- LLM de génération ---
 # On garde le fournisseur interchangeable : "groq" (gratuit, rapide, par
@@ -58,6 +65,14 @@ LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "openai/gpt-oss-20b")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# --- Démo publique (Streamlit Community Cloud) ---
+# DEMO_MODE=true masque l'ajout de documents (sur un serveur partagé, un
+# fichier envoyé par un visiteur serait visible par tous les autres) et
+# limite le nombre de questions par visiteur, pour ne pas épuiser le quota
+# gratuit de la clé Groq.
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+DEMO_MAX_QUESTIONS = int(os.getenv("DEMO_MAX_QUESTIONS", "15"))
 
 # Nom de la "collection" dans la base vectorielle (comme le nom d'une table).
 COLLECTION_NAME = "mes_notes"

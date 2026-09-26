@@ -1,32 +1,138 @@
 {
   "in_scope": [
-    {"question": "Quelle taille de morceau choisir quand on découpe un document ?", "expected": "500 à 1000"},
-    {"question": "Quelle est la différence entre recherche sparse et dense ?", "expected": "compare les mots exacts"},
-    {"question": "Pourquoi utiliser Chroma pour commencer ?", "expected": "Pinecone ou Weaviate"},
-    {"question": "Qu'arrive-t-il si les bons passages ne sont pas retrouvés ?", "expected": "qualité du retrieval"},
-    {"question": "Que fait Spring avec les exceptions JDBC dans un @Repository ?", "expected": "DataAccessException"},
-    {"question": "Qu'est-ce qui distingue @Component de @Service ?", "expected": "@Component est générique"},
-    {"question": "Comment un objet reçoit-il ses dépendances ?", "expected": "conteneur IoC"},
-    {"question": "Comment activer un profil Spring ?", "expected": "spring.profiles.active"},
-    {"question": "Quelle est la différence entre une image et un conteneur ?", "expected": "instance en cours d'exécution"},
-    {"question": "Pourquoi copier requirements.txt avant le code dans un Dockerfile ?", "expected": "AVANT de copier le code"},
-    {"question": "Comment garder les données d'une base quand on supprime le conteneur ?", "expected": "monte un dossier"},
-    {"question": "Que signifie l'option -d ?", "expected": "mode détaché"},
-    {"question": "Comment lister tous les clients même ceux sans commande ?", "expected": "LEFT JOIN garde"},
-    {"question": "Peut-on utiliser COUNT dans un WHERE ?", "expected": "HAVING COUNT(*) > 5"},
-    {"question": "Faut-il indexer toutes les colonnes d'une table ?", "expected": "pas toutes les colonnes"},
-    {"question": "Que fait @Transactional si une exception est levée ?", "expected": "rollback automatique"},
-    {"question": "Que veut dire ACID ?", "expected": "Atomicité"},
-    {"question": "Est-ce que je peux faire un rebase sur une branche partagée ?", "expected": "ne jamais faire de rebase"},
-    {"question": "Comment annuler mon dernier commit en gardant mes modifications ?", "expected": "reset --soft"},
-    {"question": "J'ai commité ma clé API par erreur, que faire ?", "expected": "révoquer la clé"},
-    {"question": "Quel préfixe mettre dans un message de commit qui corrige un bug ?", "expected": "fix pour une correction"},
-    {"question": "Quelle commande démarre tous les services en arrière-plan ?", "expected": "docker compose up -d"}
+    {
+      "question": "Quelle taille de morceau choisir quand on découpe un document ?",
+      "expected": "500 à 1000"
+    },
+    {
+      "question": "Quelle est la différence entre recherche sparse et dense ?",
+      "expected": "compare les mots exacts"
+    },
+    {
+      "question": "Pourquoi utiliser Chroma pour commencer ?",
+      "expected": "Pinecone ou Weaviate"
+    },
+    {
+      "question": "Qu'arrive-t-il si les bons passages ne sont pas retrouvés ?",
+      "expected": "qualité du retrieval"
+    },
+    {
+      "question": "Que fait Spring avec les exceptions JDBC dans un @Repository ?",
+      "expected": "DataAccessException"
+    },
+    {
+      "question": "Qu'est-ce qui distingue @Component de @Service ?",
+      "expected": "@Component est générique"
+    },
+    {
+      "question": "Comment un objet reçoit-il ses dépendances ?",
+      "expected": "conteneur IoC"
+    },
+    {
+      "question": "Comment activer un profil Spring ?",
+      "expected": "spring.profiles.active"
+    },
+    {
+      "question": "Quelle est la différence entre une image et un conteneur ?",
+      "expected": "instance en cours d'exécution"
+    },
+    {
+      "question": "Pourquoi copier requirements.txt avant le code dans un Dockerfile ?",
+      "expected": "AVANT de copier le code"
+    },
+    {
+      "question": "Comment garder les données d'une base quand on supprime le conteneur ?",
+      "expected": "monte un dossier"
+    },
+    {
+      "question": "Que signifie l'option -d ?",
+      "expected": "mode détaché"
+    },
+    {
+      "question": "Comment lister tous les clients même ceux sans commande ?",
+      "expected": "LEFT JOIN garde"
+    },
+    {
+      "question": "Peut-on utiliser COUNT dans un WHERE ?",
+      "expected": "HAVING COUNT(*) > 5"
+    },
+    {
+      "question": "Faut-il indexer toutes les colonnes d'une table ?",
+      "expected": "pas toutes les colonnes"
+    },
+    {
+      "question": "Que fait @Transactional si une exception est levée ?",
+      "expected": "rollback automatique"
+    },
+    {
+      "question": "Que veut dire ACID ?",
+      "expected": "Atomicité"
+    },
+    {
+      "question": "Est-ce que je peux faire un rebase sur une branche partagée ?",
+      "expected": "ne jamais faire de rebase"
+    },
+    {
+      "question": "Comment annuler mon dernier commit en gardant mes modifications ?",
+      "expected": "reset --soft"
+    },
+    {
+      "question": "J'ai commité ma clé API par erreur, que faire ?",
+      "expected": "révoquer la clé"
+    },
+    {
+      "question": "Quel préfixe mettre dans un message de commit qui corrige un bug ?",
+      "expected": "fix pour une correction"
+    },
+    {
+      "question": "Quelle commande démarre tous les services en arrière-plan ?",
+      "expected": "docker compose up -d"
+    },
+    {
+      "question": "Quelle est la plus petite unité qu'on peut déployer dans Kubernetes ?",
+      "expected": "l'objet déployable le plus petit"
+    },
+    {
+      "question": "Quel composant choisit la machine sur laquelle un pod va tourner ?",
+      "expected": "attribue chaque Pod à un nœud approprié"
+    },
+    {
+      "question": "Où Kubernetes stocke-t-il les données du cluster ?",
+      "expected": "magasin de clés-valeurs cohérent"
+    },
+    {
+      "question": "Comment revenir à la version précédente d'un déploiement ?",
+      "expected": "kubectl rollout undo"
+    },
+    {
+      "question": "Comment sont encodées les valeurs du champ data d'un Secret ?",
+      "expected": "encodées en base64"
+    },
+    {
+      "question": "Quel est le type de Service utilisé si on n'en précise pas ?",
+      "expected": "La valeur par défaut est «ClusterIP»"
+    },
+    {
+      "question": "J'ai oublié un fichier dans mon dernier commit, comment le rajouter ?",
+      "expected": "git commit --amend"
+    },
+    {
+      "question": "Comment ajouter un dépôt distant avec un nom court ?",
+      "expected": "git remote add [nomcourt] [url]"
+    },
+    {
+      "question": "Comment Git sait-il sur quelle branche je me trouve ?",
+      "expected": "pointeur spécial appelé `HEAD`"
+    },
+    {
+      "question": "Comment créer une branche et basculer dessus en une seule commande ?",
+      "expected": "git checkout -b iss53"
+    }
   ],
   "out_of_scope": [
     "Qui a gagné la coupe du monde 2018 ?",
     "Quelle est la capitale de l'Australie ?",
-    "Comment fonctionne un pod Kubernetes ?",
+    "Comment configurer un pipeline Jenkins ?",
     "Quelle est la complexité du tri rapide ?"
   ]
 }
