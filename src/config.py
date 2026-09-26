@@ -9,6 +9,7 @@ un seul endroit à modifier pour changer le comportement de l'app.
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Charge les variables du fichier .env dans l'environnement (comme un .env

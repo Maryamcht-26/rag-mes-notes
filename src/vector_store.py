@@ -8,9 +8,9 @@ toujours par un @Repository plutôt que par le driver JDBC en direct.
 """
 
 from chromadb.config import Settings
+from langchain.schema import Document
 from langchain_chroma import Chroma
 from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain.schema import Document
 
 from src import config
 
@@ -109,5 +109,5 @@ def get_all_chunks(vector_store: Chroma) -> list[Document]:
     data = vector_store.get(include=["documents", "metadatas"])
     return [
         Document(page_content=text, metadata=metadata or {})
-        for text, metadata in zip(data["documents"], data["metadatas"])
+        for text, metadata in zip(data["documents"], data["metadatas"], strict=True)
     ]

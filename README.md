@@ -1,6 +1,6 @@
 # RAG sur mes notes
 
-![CI](https://github.com/Maryamcht-26/rag-mes-notes/actions/workflows/ci.yml/badge.svg)
+[![CI/CD](https://github.com/Maryamcht-26/rag-mes-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/Maryamcht-26/rag-mes-notes/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -17,7 +17,7 @@ répond qu'il ne sait pas au lieu d'inventer.
 - **100 % de refus** sur les questions hors périmètre du jeu d'évaluation (aucune réponse inventée)
 - Formats `.md`, `.txt` et **`.pdf`** (citations avec numéro de page)
 - Interface **chat Streamlit** avec passages sources affichés, mode démo publique
-- **Tests sans clé API** (LLM simulé), CI GitHub Actions, image **Docker**
+- **Pipeline CI/CD** GitHub Actions : lint, tests sans clé API (LLM simulé), image **Docker** testée au démarrage puis publiée sur ghcr.io
 - 100 % gratuit : embeddings locaux (CPU), LLM via le tier gratuit de Groq
 
 ## Résultats
@@ -168,6 +168,36 @@ docker run -p 8501:8501 --env-file .env rag-mes-notes
 fichier envoyé par un visiteur serait visible par tous) et limite le nombre
 de questions par visiteur pour préserver le quota gratuit de la clé.
 
+## CI/CD
+
+Pipeline GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) :
+
+```mermaid
+flowchart LR
+    P[push / pull request] --> L[lint<br>ruff]
+    P --> T[tests<br>pytest]
+    L --> D[image Docker<br>build + smoke test]
+    T --> D
+    D -->|main uniquement| G[publication<br>ghcr.io]
+    P -->|main| S[Streamlit Cloud<br>redéploiement auto]
+```
+
+| Étape | Déclenchement | Ce qui est vérifié |
+|---|---|---|
+| **lint** | chaque push et PR | style et erreurs fréquentes (`ruff` : imports inutilisés, `zip` sans `strict`...) |
+| **tests** | chaque push et PR | 10 tests unitaires, LLM et retriever simulés (aucune clé API dans la CI) |
+| **docker** | si lint et tests passent | l'image se construit, le conteneur démarre, indexe les documents et répond sur `/_stcore/health` |
+| **publication** | push sur `main` | image publiée sur `ghcr.io/maryamcht-26/rag-mes-notes` (tags `latest` et hash du commit) |
+
+Le cache des couches Docker est partagé entre les exécutions : seules les
+couches modifiées sont reconstruites. Un nouveau push sur la même branche
+annule le pipeline précédent devenu obsolète.
+
+```bash
+ruff check .                                              # le lint de la CI, en local
+docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par la CD
+```
+
 ## Structure
 
 ```
@@ -183,7 +213,7 @@ de questions par visiteur pour préserver le quota gratuit de la clé.
 ├── tests/               # tests unitaires (LLM et retriever simulés)
 ├── app.py               # interface web Streamlit
 ├── Dockerfile
-└── .github/workflows/   # CI : tests à chaque push
+└── .github/workflows/   # CI/CD : lint, tests, image Docker, publication
 ```
 
 ## Choix techniques
@@ -200,6 +230,10 @@ de questions par visiteur pour préserver le quota gratuit de la clé.
   séparément.
 
 ## Journal des versions
+
+**V1.4**
+- Pipeline CI/CD : lint `ruff`, tests, construction et smoke test de l'image Docker, publication sur GitHub Container Registry depuis `main`
+- Corrections du lint : `zip(..., strict=True)` (une différence de longueur lève une erreur au lieu d'être ignorée), ordre des imports
 
 **V1.3**
 - Base documentaire réelle : documentation Kubernetes et Pro Git sous licence libre (17 documents, 741 passages) et 10 nouvelles questions d'évaluation

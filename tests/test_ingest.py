@@ -4,8 +4,9 @@ configurée et qu'aucun chunk n'est vide. Lance avec : pytest tests/
 """
 
 from langchain.schema import Document
-from src.ingest import normalize_metadata, split_documents
+
 from src import config
+from src.ingest import normalize_metadata, split_documents
 
 
 def test_split_documents_respects_chunk_size():

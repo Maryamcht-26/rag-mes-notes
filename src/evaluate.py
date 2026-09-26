@@ -53,7 +53,7 @@ def evaluate_retrieval(retriever, questions: list[dict]) -> dict:
         "hit@1": sum(r == 1 for r in ranks) / n,
         f"hit@{config.TOP_K}": sum(r is not None for r in ranks) / n,
         "mrr": sum(1 / r for r in ranks if r) / n,
-        "misses": [q["question"] for q, r in zip(questions, ranks) if r is None],
+        "misses": [q["question"] for q, r in zip(questions, ranks, strict=True) if r is None],
     }
 
 
@@ -72,8 +72,8 @@ def evaluate_generation(chain, in_scope: list[dict], out_of_scope: list[str]) ->
     return {
         "answered": sum(answered) / len(answered),
         "refused": sum(refused) / len(refused),
-        "wrongly_refused": [q["question"] for q, ok in zip(in_scope, answered) if not ok],
-        "hallucinated": [q for q, ok in zip(out_of_scope, refused) if not ok],
+        "wrongly_refused": [q["question"] for q, ok in zip(in_scope, answered, strict=True) if not ok],
+        "hallucinated": [q for q, ok in zip(out_of_scope, refused, strict=True) if not ok],
     }
 
 

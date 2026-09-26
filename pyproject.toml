@@ -1,0 +1,16 @@
+# Configuration des outils de qualité (le projet n'est pas un paquet installable).
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+# E/W : style PEP 8, F : erreurs réelles (imports inutilisés, variables non
+# définies...), I : ordre des imports, B : bugs fréquents, UP : syntaxe moderne.
+select = ["E", "W", "F", "I", "B", "UP"]
+# UP024 voudrait remplacer EnvironmentError par OSError (identiques en Python 3) :
+# on garde EnvironmentError, plus parlant pour "clé API manquante".
+ignore = ["UP024"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

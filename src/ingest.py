@@ -6,9 +6,10 @@ transforme des fichiers bruts en objets prêts à être persistés.
 """
 
 from pathlib import Path
-from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, TextLoader
 
 from src import config
 

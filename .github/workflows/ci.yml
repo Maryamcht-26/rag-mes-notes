@@ -1,12 +1,39 @@
-# Lance les tests à chaque push et pull request. Les tests n'utilisent ni
-# clé API ni réseau (LLM et retriever simulés), donc aucun secret n'est requis.
-name: CI
+# Pipeline CI/CD
+#
+#   push / pull request ──┬── lint  ──┐
+#                         └── tests ──┴── docker (build + smoke test) ── publish (main uniquement)
+#
+# - CI (chaque push et chaque pull request) : lint, tests, construction de
+#   l'image Docker et vérification qu'elle démarre vraiment.
+# - CD (uniquement sur main) : publication de l'image sur GitHub Container
+#   Registry (ghcr.io). La démo Streamlit Cloud, elle, se redéploie seule à
+#   chaque push sur main.
+# Aucun secret n'est nécessaire : les tests simulent le LLM, et la
+# publication utilise le jeton GITHUB_TOKEN fourni automatiquement par GitHub.
+name: CI/CD
 
 on:
   push:
+    branches: [main]
   pull_request:
 
+# Si on pousse deux fois de suite sur la même branche, on annule le pipeline
+# précédent devenu obsolète au lieu de faire tourner les deux.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install ruff==0.8.4
+      - run: ruff check . --output-format=github  # erreurs affichées sur les lignes de la PR
+
   tests:
     runs-on: ubuntu-latest
     steps:
@@ -16,4 +43,69 @@ jobs:
           python-version: "3.10"
           cache: pip
       - run: pip install -r requirements-dev.txt
-      - run: pytest tests/ -v
+      - run: pytest -v
+
+  docker:
+    needs: [lint, tests]  # inutile de construire l'image si le code est cassé
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # nécessaire pour publier sur ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construire l'image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true  # garde l'image en local pour le smoke test
+          tags: rag-mes-notes:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max  # les couches inchangées ne sont pas reconstruites
+
+      - name: Smoke test (le conteneur démarre et l'app répond)
+        run: |
+          docker run -d --name app -p 8501:8501 rag-mes-notes:test
+          # Au démarrage, le conteneur télécharge le modèle d'embeddings et
+          # indexe les documents avant de lancer Streamlit : on attend jusqu'à 6 min.
+          for i in $(seq 1 72); do
+            if curl -sf http://localhost:8501/_stcore/health | grep -q ok; then
+              echo "Application prête après ~$((i * 5)) s"
+              docker logs app 2>&1 | grep -E "chunk|Base vectorielle"
+              exit 0
+            fi
+            if [ -z "$(docker ps -q -f name=app)" ]; then
+              echo "Le conteneur s'est arrêté :"; docker logs app; exit 1
+            fi
+            sleep 5
+          done
+          echo "L'application ne répond pas après 6 minutes :"; docker logs app; exit 1
+
+      - name: Tags de l'image
+        if: github.ref == 'refs/heads/main'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=
+
+      - name: Connexion à GitHub Container Registry
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publier l'image (CD)
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha  # réutilise le build précédent : quasi instantané
