@@ -17,6 +17,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
 
 from src import config
+from src.observability import timed_ask
 from src.vector_store import get_all_chunks, get_vector_store
 
 # Le prompt qui encadre le LLM : on lui dit explicitement de ne répondre
@@ -211,5 +212,9 @@ def ask(question: str) -> dict:
     """
     Point d'entrée simple : pose une question, récupère la réponse, les
     sources et les passages utilisés, en un seul passage dans la base.
+
+    Passe par timed_ask() (src/observability.py) : chaque question posée
+    via l'app ou la CLI est journalisée (latence, tokens, passages) dans
+    logs/metrics.jsonl, sans rien changer d'autre ici ni côté appelants.
     """
-    return get_chain().invoke(question)
+    return timed_ask(get_chain(), question)

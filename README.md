@@ -19,6 +19,7 @@ répond qu'il ne sait pas au lieu d'inventer.
 - Interface **chat Streamlit** avec passages sources affichés, mode démo publique
 - **Pipeline CI/CD** GitHub Actions : lint, tests sans clé API (LLM simulé), image **Docker** testée au démarrage puis publiée sur ghcr.io
 - **Qualité et sécurité LLM** : fidélité des réponses mesurée (RAGAS) et tests de robustesse face au prompt injection (OWASP Top 10 LLM)
+- **Observabilité** : latence et tokens consommés journalisés à chaque question réelle (logs/metrics.jsonl)
 - 100 % gratuit : embeddings locaux (CPU), LLM via le tier gratuit de Groq
 
 ## Résultats
@@ -270,6 +271,38 @@ formelle : un test qui passe ici ne remplace pas une revue humaine ni un
 vrai test d'intrusion. L'OWASP recommande une défense en profondeur, pas
 un seul prompt bien écrit, aussi bon soit-il.
 
+## Observabilité
+
+Les évaluations (`evaluate.py`, `evaluate_ragas.py`, `evaluate_security.py`)
+mesurent la qualité sur un jeu de questions **fixe**, avant de livrer. Elles
+ne disent rien des questions **réellement posées** une fois l'app en
+service. `src/observability.py` journalise chaque question posée via
+l'app ou la CLI (latence, tokens consommés, nombre de passages) dans
+`logs/metrics.jsonl` (une ligne JSON par question, non versionné).
+
+```bash
+streamlit run app.py            # ou python -m src.cli — pose quelques questions
+python -m src.aggregate_metrics # agrège logs/metrics.jsonl en statistiques
+```
+
+Les tokens sont capturés via un callback LangChain (`on_llm_end`), pas en
+lisant la réponse finale : la chaîne passe la réponse du LLM dans
+`StrOutputParser()`, qui la réduit à une simple chaîne de caractères —
+les métadonnées (tokens) sont déjà perdues à ce stade si on ne les
+intercepte pas avant. Bonus découvert en l'implémentant : le détail des
+tokens dits "de raisonnement" (`reasoning_tokens`), spécifique aux
+modèles comme `openai/gpt-oss-20b` qui "réfléchissent" avant de répondre
+— le même phénomène déjà rencontré en Phase 1 avec le LLM-juge RAGAS
+(voir *Qualité des réponses (RAGAS)*), mesuré ici pour de vrai.
+
+Volontairement un fichier JSON Lines + un script d'agrégation plutôt
+qu'un outil dédié (Langfuse, LangSmith...) : zéro compte à créer, zéro
+dépendance de plus, et ça répond à la question posée ("combien ça coûte
+en tokens, combien ça prend en temps ?") sans ajouter d'infrastructure
+pour un projet à un seul utilisateur. Piste pour la suite si le volume
+de requêtes augmentait : Langfuse (auto-hébergeable, gratuit), qui fait
+la même chose en continu avec un vrai tableau de bord.
+
 ## Structure
 
 ```
@@ -282,6 +315,8 @@ un seul prompt bien écrit, aussi bon soit-il.
 │   ├── evaluate.py      # métriques Hit@k, MRR, taux de réponse et de refus
 │   ├── evaluate_ragas.py    # fidélité des réponses (RAGAS, manuel)
 │   ├── evaluate_security.py # robustesse face aux tentatives d'injection (OWASP)
+│   ├── observability.py     # journalisation latence/tokens/passages (logs/metrics.jsonl)
+│   ├── aggregate_metrics.py # agrège logs/metrics.jsonl en statistiques
 │   └── cli.py           # chat en ligne de commande
 ├── eval/questions.json  # jeu d'évaluation (questions + passage attendu)
 ├── eval/adversarial.json # tentatives d'injection, fuite de prompt, etc.
@@ -305,6 +340,18 @@ un seul prompt bien écrit, aussi bon soit-il.
   séparément.
 
 ## Journal des versions
+
+**V1.7**
+- Observabilité : `src/observability.py` journalise chaque question
+  posée via l'app ou la CLI (latence, tokens dont raisonnement, passages)
+  dans `logs/metrics.jsonl` ; `src/aggregate_metrics.py` agrège ces logs
+  en statistiques
+- Tokens capturés via un callback LangChain (`on_llm_end`), seul endroit
+  où ils sont encore accessibles avant que `StrOutputParser()` ne réduise
+  la réponse à une simple chaîne
+- **Correctif** : `logging.basicConfig()` configure le logger racine —
+  sans `logger.setLevel()` ciblé sur notre propre logger, les librairies
+  tierces (httpx...) se mettaient aussi à tout logguer sur la console
 
 **V1.6**
 - Tests de robustesse face aux tentatives d'injection (OWASP LLM01 Prompt

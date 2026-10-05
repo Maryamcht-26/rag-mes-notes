@@ -4,6 +4,9 @@
 # Base vectorielle générée localement (à régénérer avec build_index)
 data/vector_db/
 
+# Logs de requêtes réelles (métriques d'observabilité, générées localement)
+logs/
+
 # Python
 __pycache__/
 *.pyc

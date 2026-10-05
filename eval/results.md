@@ -33,9 +33,10 @@ Passage non retrouvé en mode hybrid :
 
 | Métrique | Score |
 |---|---|
-| Réponses données (questions dans le périmètre) | 94% |
+| Réponses données (questions dans le périmètre) | 91% |
 | Refus corrects (questions hors périmètre) | 100% |
 
 Refus à tort :
-- Comment annuler mon dernier commit en gardant mes modifications ?
+- Que signifie l'option -d ?
 - Quel composant choisit la machine sur laquelle un pod va tourner ?
+- J'ai oublié un fichier dans mon dernier commit, comment le rajouter ?
