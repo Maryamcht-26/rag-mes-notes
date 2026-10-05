@@ -55,6 +55,7 @@ précis. Voir *Limites et pistes* dans le README.
 
 import argparse
 import json
+import sys
 import time
 
 from ragas import EvaluationDataset, evaluate
@@ -94,6 +95,11 @@ def build_dataset(chain, sample_size: int) -> EvaluationDataset:
 
 
 def main() -> None:
+    # Sans ça, print() plante sur Windows (console en cp1252) dès qu'une
+    # réponse du LLM contient un caractère hors de ce jeu (ex. une espace
+    # fine insécable avant un "%"). Voir le même correctif dans evaluate.py.
+    sys.stdout.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(description="Évalue la fidélité des réponses au contexte avec RAGAS.")
     parser.add_argument("--sample", type=int, default=8, help="nombre de questions à évaluer (défaut : 8)")
     args = parser.parse_args()

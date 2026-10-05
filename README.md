@@ -18,6 +18,7 @@ répond qu'il ne sait pas au lieu d'inventer.
 - Formats `.md`, `.txt` et **`.pdf`** (citations avec numéro de page)
 - Interface **chat Streamlit** avec passages sources affichés, mode démo publique
 - **Pipeline CI/CD** GitHub Actions : lint, tests sans clé API (LLM simulé), image **Docker** testée au démarrage puis publiée sur ghcr.io
+- **Qualité et sécurité LLM** : fidélité des réponses mesurée (RAGAS) et tests de robustesse face au prompt injection (OWASP Top 10 LLM)
 - 100 % gratuit : embeddings locaux (CPU), LLM via le tier gratuit de Groq
 
 ## Résultats
@@ -242,6 +243,33 @@ ruff check .                                              # le lint de la CI, en
 docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par la CD
 ```
 
+## Sécurité
+
+Tests de robustesse face aux tentatives d'injection, inspirés de l'[OWASP
+Top 10 pour les applications LLM (2025)](https://www.promptfoo.dev/blog/owasp-top-10-llms-tldr/) :
+
+| Risque OWASP | Ce qui est testé |
+|---|---|
+| LLM01 Prompt Injection | La question tente de faire changer de rôle le modèle, d'ignorer ses règles, ou de jouer un personnage ("jailbreak") |
+| LLM02 Sensitive Information Disclosure | Demander une donnée sensible (clé API) que le modèle pourrait halluciner |
+| LLM07 System Prompt Leakage | Demander de recopier les instructions système telles quelles |
+
+```bash
+python -m src.evaluate_security   # 5 tests, eval/adversarial.json
+```
+
+Résultat mesuré : **5/5 tests passés** (`eval/results_security.md`). Mais
+le premier run a révélé une vraie fuite : le modèle recopiait tout le
+prompt système mot pour mot quand on le lui demandait explicitement.
+Corrigé en séparant les règles (message `system`) du contexte et de la
+question (message `human`) plutôt qu'un seul bloc de texte — voir
+*Journal des versions*, V1.6.
+
+Vérification heuristique (mots-clés dans la réponse), pas une preuve
+formelle : un test qui passe ici ne remplace pas une revue humaine ni un
+vrai test d'intrusion. L'OWASP recommande une défense en profondeur, pas
+un seul prompt bien écrit, aussi bon soit-il.
+
 ## Structure
 
 ```
@@ -252,9 +280,11 @@ docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par
 │   ├── build_index.py   # script d'indexation
 │   ├── rag_chain.py     # retrieval hybride + prompt + génération
 │   ├── evaluate.py      # métriques Hit@k, MRR, taux de réponse et de refus
-│   ├── evaluate_ragas.py # fidélité + pertinence des réponses (RAGAS, manuel)
+│   ├── evaluate_ragas.py    # fidélité des réponses (RAGAS, manuel)
+│   ├── evaluate_security.py # robustesse face aux tentatives d'injection (OWASP)
 │   └── cli.py           # chat en ligne de commande
 ├── eval/questions.json  # jeu d'évaluation (questions + passage attendu)
+├── eval/adversarial.json # tentatives d'injection, fuite de prompt, etc.
 ├── tests/               # tests unitaires (LLM et retriever simulés)
 ├── app.py               # interface web Streamlit
 ├── Dockerfile
@@ -275,6 +305,19 @@ docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par
   séparément.
 
 ## Journal des versions
+
+**V1.6**
+- Tests de robustesse face aux tentatives d'injection (OWASP LLM01 Prompt
+  Injection, LLM02 Sensitive Information Disclosure, LLM07 System Prompt
+  Leakage) : `eval/adversarial.json` + `src/evaluate_security.py`
+- **Correctif** : le prompt système était recopié mot pour mot quand on le
+  demandait explicitement — corrigé en séparant les règles (message
+  `system`) du contexte et de la question (message `human`) plutôt qu'un
+  seul bloc de texte
+- **Correctif** : `print()` d'un rapport d'évaluation pouvait planter sur
+  Windows (console en cp1252) dès qu'une réponse du LLM contenait un
+  caractère hors de ce jeu (ex. espace fine insécable) ; stdout forcé en
+  UTF-8 dans les trois scripts d'évaluation
 
 **V1.5**
 - Évaluation de la **qualité des réponses** avec RAGAS (`Faithfulness`),

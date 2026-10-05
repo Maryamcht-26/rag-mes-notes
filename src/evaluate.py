@@ -26,6 +26,7 @@ Métriques de génération (--llm) :
 
 import argparse
 import json
+import sys
 import time
 
 from src import config
@@ -78,6 +79,14 @@ def evaluate_generation(chain, in_scope: list[dict], out_of_scope: list[str]) ->
 
 
 def main() -> None:
+    # Sans ça, print() plante sur Windows (console en cp1252) dès que la
+    # réponse du LLM contient un caractère hors de ce jeu — ex. une espace
+    # fine insécable (U+202F) avant un "%", que les modèles ajoutent parfois
+    # en français. Le fichier, lui, était déjà écrit en UTF-8 (write_text) ;
+    # c'était uniquement l'affichage console qui pouvait tout interrompre
+    # AVANT l'écriture, puisque print() est appelé en premier.
+    sys.stdout.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(description="Évalue le retrieval (et optionnellement les réponses).")
     parser.add_argument("--llm", action="store_true", help="évalue aussi les réponses du LLM (utilise l'API)")
     args = parser.parse_args()
