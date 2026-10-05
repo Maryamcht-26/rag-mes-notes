@@ -39,11 +39,18 @@ Question : {question}
 Réponse :"""
 
 
-def get_llm():
+def get_llm(max_tokens: int | None = None):
     """
     Retourne le client LLM selon la variable d'environnement LLM_PROVIDER.
     Groq est utilisé par défaut car son offre gratuite est généreuse et
     rapide, ce qui est idéal pour un projet perso / une démo d'entretien.
+
+    max_tokens=None (par défaut) : pas de limite imposée ici, on garde le
+    comportement du provider. evaluate_ragas.py passe une valeur plus
+    généreuse : le LLM-juge RAGAS répond en JSON structuré (liste
+    d'affirmations, verdicts), plus long qu'une réponse normale de l'app —
+    avec la limite par défaut, la réponse était tronquée avant la fin du
+    JSON (LLMDidNotFinishException côté RAGAS).
     """
     if config.LLM_PROVIDER == "groq":
         from langchain_groq import ChatGroq
@@ -53,14 +60,18 @@ def get_llm():
                 "GROQ_API_KEY manquant. Crée une clé gratuite sur console.groq.com "
                 "et ajoute-la dans ton fichier .env."
             )
-        return ChatGroq(model=config.LLM_MODEL_NAME, api_key=config.GROQ_API_KEY, temperature=0)
+        return ChatGroq(
+            model=config.LLM_MODEL_NAME, api_key=config.GROQ_API_KEY, temperature=0, max_tokens=max_tokens
+        )
 
     if config.LLM_PROVIDER == "openai":
         from langchain_openai import ChatOpenAI
 
         if not config.OPENAI_API_KEY:
             raise EnvironmentError("OPENAI_API_KEY manquant dans le fichier .env.")
-        return ChatOpenAI(model=config.LLM_MODEL_NAME, api_key=config.OPENAI_API_KEY, temperature=0)
+        return ChatOpenAI(
+            model=config.LLM_MODEL_NAME, api_key=config.OPENAI_API_KEY, temperature=0, max_tokens=max_tokens
+        )
 
     raise ValueError(f"LLM_PROVIDER inconnu : {config.LLM_PROVIDER!r} (attendu: 'groq' ou 'openai')")
 

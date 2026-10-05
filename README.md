@@ -74,6 +74,47 @@ causes identifiées et mesurées :
 recherche vectorielle de Chroma est approximative (HNSW). Avec 32
 questions, seules les différences de plusieurs points sont significatives.
 
+### Qualité des réponses (RAGAS)
+
+Hit@k et MRR mesurent le **retrieval** (a-t-on trouvé le bon passage ?),
+pas la **réponse** elle-même : un retrieval parfait n'empêche pas le LLM
+d'ajouter un détail inventé. [RAGAS](https://docs.ragas.io/) fait juger
+chaque réponse par un second LLM, avec la métrique **Faithfulness**
+(fidélité) : la réponse ne contient-elle que des affirmations vérifiables
+dans les passages retrouvés (1.0 = aucune invention) ? Ne demande pas de
+réponse de référence écrite à la main (juste question + réponse +
+passages).
+
+```bash
+pip install -r requirements-eval.txt
+python -m src.evaluate_ragas          # 8 questions par défaut, --sample pour plus
+```
+
+Le LLM-juge est le même que celui de l'app (Groq, tier gratuit) : pas de
+clé supplémentaire. Volontairement **pas branché sur la CI** : RAGAS
+déclenche plusieurs appels LLM par question (en plus de la génération de
+la réponse), ce qui demanderait une clé API en secret GitHub et
+ralentirait chaque push de plusieurs minutes pour un gain qu'on ne veut
+vérifier qu'après un changement du prompt ou du retrieval — à lancer en
+local, à la main.
+
+Résultat mesuré sur 8 questions (`eval/results_ragas.md`) : **Faithfulness
+moyenne 0.89** (6/8 questions à 1.00, une à 0.33, deux non jugées — voir
+plus bas).
+
+Deux limites rencontrées en pratique (voir le docstring de
+`evaluate_ragas.py` pour le détail) :
+- Le modèle `openai/gpt-oss-20b` "raisonne" avant de répondre, ce qui
+  consomme des tokens ; `max_tokens=8192` sur le LLM-juge évite la plupart
+  des réponses tronquées, mais pas toutes — une question dont le
+  raisonnement dépasse la limite échoue de façon reproductible (RAGAS
+  renvoie `nan` pour elle, sans faire planter le run ; la moyenne ignore
+  les `nan`).
+- La métrique **Answer Relevancy** n'est pas incluse : elle a besoin d'un
+  modèle d'embeddings, et le wrapper RAGAS pour les embeddings LangChain
+  plante avec `FastEmbedEmbeddings` (celui du projet) — bug de
+  compatibilité RAGAS 0.4.3/FastEmbed, pas une erreur de configuration.
+
 ## Architecture
 
 ```mermaid
@@ -140,6 +181,9 @@ python -m src.cli              # ou chat en ligne de commande
 python -m src.evaluate         # évaluation du retrieval (gratuit, sans API)
 python -m src.evaluate --llm   # + évaluation des réponses (appelle le LLM)
 pytest                         # tests (sans clé API ni réseau)
+
+pip install -r requirements-eval.txt   # dépendances RAGAS (séparées, cf. section suivante)
+python -m src.evaluate_ragas           # fidélité + pertinence des réponses, jugées par un second LLM
 ```
 
 L'interface web indexe automatiquement les documents au premier lancement
@@ -208,6 +252,7 @@ docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par
 │   ├── build_index.py   # script d'indexation
 │   ├── rag_chain.py     # retrieval hybride + prompt + génération
 │   ├── evaluate.py      # métriques Hit@k, MRR, taux de réponse et de refus
+│   ├── evaluate_ragas.py # fidélité + pertinence des réponses (RAGAS, manuel)
 │   └── cli.py           # chat en ligne de commande
 ├── eval/questions.json  # jeu d'évaluation (questions + passage attendu)
 ├── tests/               # tests unitaires (LLM et retriever simulés)
@@ -230,6 +275,21 @@ docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par
   séparément.
 
 ## Journal des versions
+
+**V1.5**
+- Évaluation de la **qualité des réponses** avec RAGAS (`Faithfulness`),
+  en complément du retrieval (Hit@k, MRR) : un retrieval correct n'empêche
+  pas une réponse enrichie d'un détail inventé
+- Volontairement gardé hors CI (coût en appels LLM, clé API en secret à
+  gérer) : script manuel, lancé avant de valider un changement de prompt
+  ou de retrieval — cf. section *Qualité des réponses (RAGAS)*
+- **Correctif** : le LLM-juge RAGAS tronquait sa réponse JSON avant la fin
+  (`LLMDidNotFinishException`) avec la limite de tokens par défaut du
+  modèle de raisonnement Groq ; `get_llm()` accepte maintenant un
+  `max_tokens` optionnel
+- Métrique `Answer Relevancy` tentée puis retirée : bug de compatibilité
+  entre le wrapper d'embeddings RAGAS 0.4.3 et `FastEmbedEmbeddings`
+  (voir *Limites et pistes*)
 
 **V1.4**
 - Pipeline CI/CD : lint `ruff`, tests, construction et smoke test de l'image Docker, publication sur GitHub Container Registry depuis `main`
@@ -264,6 +324,7 @@ docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par
 - Ré-indexation complète à chaque modification (pas d'indexation incrémentale).
 - Pas de mémoire de conversation : chaque question est traitée indépendamment.
 - Jeu d'évaluation de 36 questions, écrites par l'auteur : il indique des tendances, pas des mesures statistiquement solides.
+- `evaluate_ragas.py` n'inclut pas Answer Relevancy : le wrapper RAGAS 0.4.3 pour les embeddings LangChain (`LangchainEmbeddingsWrapper`) lève une erreur Pydantic avec `FastEmbedEmbeddings` (`EmbeddingUsageEvent.model` reçoit l'objet modèle chargé au lieu d'un nom de modèle). Piste : utiliser les embeddings OpenAI pour ce script précis si `OPENAI_API_KEY` est défini, ou surveiller les prochaines versions de RAGAS.
 
 ## Licence
 
