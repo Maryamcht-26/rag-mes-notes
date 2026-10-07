@@ -18,8 +18,7 @@ répond qu'il ne sait pas au lieu d'inventer.
 - Formats `.md`, `.txt` et **`.pdf`** (citations avec numéro de page)
 - Interface **chat Streamlit** avec passages sources affichés, mode démo publique
 - **Pipeline CI/CD** GitHub Actions : lint, tests sans clé API (LLM simulé), image **Docker** testée au démarrage puis publiée sur ghcr.io
-- **Qualité et sécurité LLM** : fidélité des réponses mesurée (RAGAS) et tests de robustesse face au prompt injection (OWASP Top 10 LLM)
-- **Observabilité** : latence et tokens consommés journalisés à chaque question réelle (logs/metrics.jsonl)
+- **Qualité, sécurité, observabilité** : fidélité des réponses (RAGAS), robustesse au prompt injection (OWASP), latence/tokens journalisés à chaque question réelle
 - 100 % gratuit : embeddings locaux (CPU), LLM via le tier gratuit de Groq
 
 ## Résultats
@@ -36,10 +35,10 @@ documents découpés en 741 passages.
 
 | Génération (`openai/gpt-oss-20b`, mode hybride) | Score |
 |---|---|
-| Questions du périmètre auxquelles l'assistant répond | 94 % (30/32) |
+| Questions du périmètre auxquelles l'assistant répond | 91 % (29/32) |
 | Questions hors périmètre correctement refusées | 100 % (4/4) |
 
-Les deux questions sans réponse sont des questions dont le retrieval a raté
+Les trois questions sans réponse sont des questions dont le retrieval a raté
 le bon passage : le modèle a répondu « je ne sais pas » plutôt que
 d'inventer, ce qui est le comportement voulu.
 
@@ -79,43 +78,25 @@ questions, seules les différences de plusieurs points sont significatives.
 ### Qualité des réponses (RAGAS)
 
 Hit@k et MRR mesurent le **retrieval** (a-t-on trouvé le bon passage ?),
-pas la **réponse** elle-même : un retrieval parfait n'empêche pas le LLM
-d'ajouter un détail inventé. [RAGAS](https://docs.ragas.io/) fait juger
-chaque réponse par un second LLM, avec la métrique **Faithfulness**
-(fidélité) : la réponse ne contient-elle que des affirmations vérifiables
-dans les passages retrouvés (1.0 = aucune invention) ? Ne demande pas de
-réponse de référence écrite à la main (juste question + réponse +
-passages).
+pas si la réponse elle-même invente un détail. [RAGAS](https://docs.ragas.io/)
+fait juger chaque réponse par un second LLM, avec la métrique
+**Faithfulness** : la réponse ne contient-elle que des affirmations
+vérifiables dans les passages retrouvés (1.0 = aucune invention) ?
 
 ```bash
 pip install -r requirements-eval.txt
 python -m src.evaluate_ragas          # 8 questions par défaut, --sample pour plus
 ```
 
-Le LLM-juge est le même que celui de l'app (Groq, tier gratuit) : pas de
-clé supplémentaire. Volontairement **pas branché sur la CI** : RAGAS
-déclenche plusieurs appels LLM par question (en plus de la génération de
-la réponse), ce qui demanderait une clé API en secret GitHub et
-ralentirait chaque push de plusieurs minutes pour un gain qu'on ne veut
-vérifier qu'après un changement du prompt ou du retrieval — à lancer en
-local, à la main.
+Résultat mesuré : **Faithfulness 0.89** sur 8 questions
+(`eval/results_ragas.md`). Le LLM-juge est le même que celui de l'app
+(Groq, gratuit). Volontairement **pas branché sur la CI** (coût en appels
+LLM + clé API en secret à gérer à chaque push) : à lancer en local, à la
+main, après un changement du prompt ou du retrieval.
 
-Résultat mesuré sur 8 questions (`eval/results_ragas.md`) : **Faithfulness
-moyenne 0.89** (6/8 questions à 1.00, une à 0.33, deux non jugées — voir
-plus bas).
-
-Deux limites rencontrées en pratique (voir le docstring de
-`evaluate_ragas.py` pour le détail) :
-- Le modèle `openai/gpt-oss-20b` "raisonne" avant de répondre, ce qui
-  consomme des tokens ; `max_tokens=8192` sur le LLM-juge évite la plupart
-  des réponses tronquées, mais pas toutes — une question dont le
-  raisonnement dépasse la limite échoue de façon reproductible (RAGAS
-  renvoie `nan` pour elle, sans faire planter le run ; la moyenne ignore
-  les `nan`).
-- La métrique **Answer Relevancy** n'est pas incluse : elle a besoin d'un
-  modèle d'embeddings, et le wrapper RAGAS pour les embeddings LangChain
-  plante avec `FastEmbedEmbeddings` (celui du projet) — bug de
-  compatibilité RAGAS 0.4.3/FastEmbed, pas une erreur de configuration.
+Limite connue (détail dans le docstring de `evaluate_ragas.py`) : la
+métrique Answer Relevancy n'est pas incluse — bug de compatibilité entre
+RAGAS et le modèle d'embeddings du projet (voir *Limites et pistes*).
 
 ## Architecture
 
@@ -183,10 +164,11 @@ python -m src.cli              # ou chat en ligne de commande
 python -m src.evaluate         # évaluation du retrieval (gratuit, sans API)
 python -m src.evaluate --llm   # + évaluation des réponses (appelle le LLM)
 pytest                         # tests (sans clé API ni réseau)
-
-pip install -r requirements-eval.txt   # dépendances RAGAS (séparées, cf. section suivante)
-python -m src.evaluate_ragas           # fidélité + pertinence des réponses, jugées par un second LLM
 ```
+
+Évaluations plus poussées (fidélité des réponses, sécurité, observabilité) :
+voir les sections *Qualité des réponses (RAGAS)*, *Sécurité* et
+*Observabilité* plus bas, chacune avec sa propre commande.
 
 L'interface web indexe automatiquement les documents au premier lancement
 si la base n'existe pas encore. Pour interroger tes propres documents,
@@ -246,62 +228,46 @@ docker pull ghcr.io/maryamcht-26/rag-mes-notes:latest     # l'image publiée par
 
 ## Sécurité
 
-Tests de robustesse face aux tentatives d'injection, inspirés de l'[OWASP
-Top 10 pour les applications LLM (2025)](https://www.promptfoo.dev/blog/owasp-top-10-llms-tldr/) :
-
-| Risque OWASP | Ce qui est testé |
-|---|---|
-| LLM01 Prompt Injection | La question tente de faire changer de rôle le modèle, d'ignorer ses règles, ou de jouer un personnage ("jailbreak") |
-| LLM02 Sensitive Information Disclosure | Demander une donnée sensible (clé API) que le modèle pourrait halluciner |
-| LLM07 System Prompt Leakage | Demander de recopier les instructions système telles quelles |
+Tests de robustesse inspirés de l'[OWASP Top 10 pour les applications
+LLM](https://www.promptfoo.dev/blog/owasp-top-10-llms-tldr/) : le modèle
+doit garder son rôle face à une tentative de le faire "jailbreaker", ne
+jamais recopier ses instructions système, et ne jamais inventer une donnée
+sensible (ex. une clé API).
 
 ```bash
 python -m src.evaluate_security   # 5 tests, eval/adversarial.json
 ```
 
-Résultat mesuré : **5/5 tests passés** (`eval/results_security.md`). Mais
-le premier run a révélé une vraie fuite : le modèle recopiait tout le
-prompt système mot pour mot quand on le lui demandait explicitement.
-Corrigé en séparant les règles (message `system`) du contexte et de la
-question (message `human`) plutôt qu'un seul bloc de texte — voir
-*Journal des versions*, V1.6.
+Résultat : **5/5 tests passés** (`eval/results_security.md`). Mais le
+premier essai a révélé une vraie fuite : le modèle recopiait tout le
+prompt système quand on le lui demandait explicitement. Corrigé en
+séparant les règles (message `system`) du contexte et de la question
+(message `human`) — voir *Journal des versions*, V1.6.
 
-Vérification heuristique (mots-clés dans la réponse), pas une preuve
-formelle : un test qui passe ici ne remplace pas une revue humaine ni un
-vrai test d'intrusion. L'OWASP recommande une défense en profondeur, pas
-un seul prompt bien écrit, aussi bon soit-il.
+Vérification par mots-clés, pas une preuve formelle de sécurité : un test
+qui passe ne remplace pas une revue humaine.
 
 ## Observabilité
 
-Les évaluations (`evaluate.py`, `evaluate_ragas.py`, `evaluate_security.py`)
-mesurent la qualité sur un jeu de questions **fixe**, avant de livrer. Elles
-ne disent rien des questions **réellement posées** une fois l'app en
-service. `src/observability.py` journalise chaque question posée via
-l'app ou la CLI (latence, tokens consommés, nombre de passages) dans
-`logs/metrics.jsonl` (une ligne JSON par question, non versionné).
+Les scripts `evaluate*.py` mesurent la qualité sur un jeu de questions
+**fixe**, avant de livrer — pas les questions réellement posées une fois
+l'app en service. `src/observability.py` journalise chaque question
+posée via l'app ou la CLI (latence, tokens, nombre de passages) dans
+`logs/metrics.jsonl` (non versionné).
 
 ```bash
 streamlit run app.py            # ou python -m src.cli — pose quelques questions
 python -m src.aggregate_metrics # agrège logs/metrics.jsonl en statistiques
 ```
 
-Les tokens sont capturés via un callback LangChain (`on_llm_end`), pas en
-lisant la réponse finale : la chaîne passe la réponse du LLM dans
-`StrOutputParser()`, qui la réduit à une simple chaîne de caractères —
-les métadonnées (tokens) sont déjà perdues à ce stade si on ne les
-intercepte pas avant. Bonus découvert en l'implémentant : le détail des
-tokens dits "de raisonnement" (`reasoning_tokens`), spécifique aux
-modèles comme `openai/gpt-oss-20b` qui "réfléchissent" avant de répondre
-— le même phénomène déjà rencontré en Phase 1 avec le LLM-juge RAGAS
-(voir *Qualité des réponses (RAGAS)*), mesuré ici pour de vrai.
+Bonus : on y voit aussi les tokens dépensés en "raisonnement" caché par
+le modèle (`openai/gpt-oss-20b`) — le même phénomène déjà rencontré avec
+le LLM-juge RAGAS, mesuré ici sur de vraies questions.
 
-Volontairement un fichier JSON Lines + un script d'agrégation plutôt
-qu'un outil dédié (Langfuse, LangSmith...) : zéro compte à créer, zéro
-dépendance de plus, et ça répond à la question posée ("combien ça coûte
-en tokens, combien ça prend en temps ?") sans ajouter d'infrastructure
-pour un projet à un seul utilisateur. Piste pour la suite si le volume
-de requêtes augmentait : Langfuse (auto-hébergeable, gratuit), qui fait
-la même chose en continu avec un vrai tableau de bord.
+Volontairement un fichier JSON Lines + un petit script plutôt qu'un outil
+dédié (Langfuse...) : zéro compte à créer, zéro dépendance de plus, pour
+un projet à un seul utilisateur. Piste si le volume augmentait un jour :
+Langfuse (auto-hébergeable, gratuit).
 
 ## Structure
 
@@ -342,44 +308,18 @@ la même chose en continu avec un vrai tableau de bord.
 ## Journal des versions
 
 **V1.7**
-- Observabilité : `src/observability.py` journalise chaque question
-  posée via l'app ou la CLI (latence, tokens dont raisonnement, passages)
-  dans `logs/metrics.jsonl` ; `src/aggregate_metrics.py` agrège ces logs
-  en statistiques
-- Tokens capturés via un callback LangChain (`on_llm_end`), seul endroit
-  où ils sont encore accessibles avant que `StrOutputParser()` ne réduise
-  la réponse à une simple chaîne
-- **Correctif** : `logging.basicConfig()` configure le logger racine —
-  sans `logger.setLevel()` ciblé sur notre propre logger, les librairies
-  tierces (httpx...) se mettaient aussi à tout logguer sur la console
+- Observabilité : `src/observability.py` journalise chaque question réelle (latence, tokens, passages) dans `logs/metrics.jsonl` ; `src/aggregate_metrics.py` agrège ces logs
+- **Correctif** : `logging.basicConfig()` affectait aussi les librairies tierces (httpx...) ; seul notre logger est maintenant configuré
 
 **V1.6**
-- Tests de robustesse face aux tentatives d'injection (OWASP LLM01 Prompt
-  Injection, LLM02 Sensitive Information Disclosure, LLM07 System Prompt
-  Leakage) : `eval/adversarial.json` + `src/evaluate_security.py`
-- **Correctif** : le prompt système était recopié mot pour mot quand on le
-  demandait explicitement — corrigé en séparant les règles (message
-  `system`) du contexte et de la question (message `human`) plutôt qu'un
-  seul bloc de texte
-- **Correctif** : `print()` d'un rapport d'évaluation pouvait planter sur
-  Windows (console en cp1252) dès qu'une réponse du LLM contenait un
-  caractère hors de ce jeu (ex. espace fine insécable) ; stdout forcé en
-  UTF-8 dans les trois scripts d'évaluation
+- Tests de robustesse face au prompt injection (OWASP LLM01/LLM02/LLM07) : `eval/adversarial.json` + `src/evaluate_security.py`
+- **Correctif** : le prompt système était recopié mot pour mot sur demande ; corrigé en séparant règles (`system`) et contexte/question (`human`)
+- **Correctif** : `print()` plantait sur Windows avec certains caractères renvoyés par le LLM ; stdout forcé en UTF-8
 
 **V1.5**
-- Évaluation de la **qualité des réponses** avec RAGAS (`Faithfulness`),
-  en complément du retrieval (Hit@k, MRR) : un retrieval correct n'empêche
-  pas une réponse enrichie d'un détail inventé
-- Volontairement gardé hors CI (coût en appels LLM, clé API en secret à
-  gérer) : script manuel, lancé avant de valider un changement de prompt
-  ou de retrieval — cf. section *Qualité des réponses (RAGAS)*
-- **Correctif** : le LLM-juge RAGAS tronquait sa réponse JSON avant la fin
-  (`LLMDidNotFinishException`) avec la limite de tokens par défaut du
-  modèle de raisonnement Groq ; `get_llm()` accepte maintenant un
-  `max_tokens` optionnel
-- Métrique `Answer Relevancy` tentée puis retirée : bug de compatibilité
-  entre le wrapper d'embeddings RAGAS 0.4.3 et `FastEmbedEmbeddings`
-  (voir *Limites et pistes*)
+- Évaluation de la fidélité des réponses avec RAGAS (`Faithfulness`), en complément du retrieval (Hit@k, MRR)
+- Volontairement gardé hors CI (coût en appels LLM) : script manuel
+- **Correctif** : le LLM-juge tronquait sa réponse (limite de tokens trop basse) ; `get_llm()` accepte maintenant un `max_tokens` optionnel
 
 **V1.4**
 - Pipeline CI/CD : lint `ruff`, tests, construction et smoke test de l'image Docker, publication sur GitHub Container Registry depuis `main`
@@ -414,7 +354,7 @@ la même chose en continu avec un vrai tableau de bord.
 - Ré-indexation complète à chaque modification (pas d'indexation incrémentale).
 - Pas de mémoire de conversation : chaque question est traitée indépendamment.
 - Jeu d'évaluation de 36 questions, écrites par l'auteur : il indique des tendances, pas des mesures statistiquement solides.
-- `evaluate_ragas.py` n'inclut pas Answer Relevancy : le wrapper RAGAS 0.4.3 pour les embeddings LangChain (`LangchainEmbeddingsWrapper`) lève une erreur Pydantic avec `FastEmbedEmbeddings` (`EmbeddingUsageEvent.model` reçoit l'objet modèle chargé au lieu d'un nom de modèle). Piste : utiliser les embeddings OpenAI pour ce script précis si `OPENAI_API_KEY` est défini, ou surveiller les prochaines versions de RAGAS.
+- `evaluate_ragas.py` n'inclut pas Answer Relevancy : bug de compatibilité entre RAGAS 0.4.3 et le modèle d'embeddings du projet (`FastEmbedEmbeddings`). Piste : embeddings OpenAI pour ce script précis, ou attendre une future version de RAGAS.
 
 ## Licence
 
