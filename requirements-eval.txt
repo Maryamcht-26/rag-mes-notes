@@ -1,7 +1,7 @@
 -r requirements.txt
 
-# RAGAS évalue la QUALITÉ des réponses (fidélité, pertinence) en plus du
-# retrieval déjà mesuré par src/evaluate.py. Dépendances volontairement
+# RAGAS évalue la QUALITÉ des réponses (fidélité) en plus du retrieval
+# déjà mesuré par src/evaluate.py. Dépendances volontairement
 # séparées de requirements-dev.txt : plus lourdes, pas nécessaires pour
 # lancer l'app ou les tests unitaires, seulement pour src/evaluate_ragas.py.
 ragas==0.4.3
